@@ -32,7 +32,8 @@ export function CallbackContent() {
     }
 
     hasProcessed.current = true;
-    completeOAuth({ code, state });
+    const redirectUri = `${window.location.origin}/callback`;
+    completeOAuth({ code, state, redirect_uri: redirectUri });
   }, [searchParams, completeOAuth, router]);
 
   if (isError) {

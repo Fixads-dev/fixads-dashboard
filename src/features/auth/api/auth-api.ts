@@ -11,6 +11,7 @@ export interface GoogleOAuthStartResponse {
 export interface GoogleOAuthCallbackParams {
   code: string;
   state: string;
+  redirect_uri: string;
 }
 
 export const authApi = {
