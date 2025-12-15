@@ -94,7 +94,6 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_API_URL=https://dev.appfixads.xyz \
             --build-arg NEXT_PUBLIC_APP_URL=https://dev.appfixads.xyz \
-            --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
             --build-arg NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER=true \
             -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ steps.version.outputs.version }} \
             -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:latest \

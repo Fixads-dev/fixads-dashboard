@@ -26,7 +26,6 @@ ARTIFACT_REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/fixads-images"
 # Build-time environment variables
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://dev.appfixads.xyz}"
 NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://dev.appfixads.xyz}"
-NEXT_PUBLIC_GOOGLE_CLIENT_ID="${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}"
 NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER="${NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER:-true}"
 
 # Colors for output
@@ -87,17 +86,6 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if GOOGLE_CLIENT_ID is set
-if [ -z "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" ]; then
-    echo -e "${YELLOW}Warning: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set${NC}"
-    echo "OAuth login will not work without this."
-    read -p "Continue anyway? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
-
 # Configure Docker for Artifact Registry
 echo -e "${YELLOW}Configuring Docker for Artifact Registry...${NC}"
 gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
@@ -108,7 +96,6 @@ if [ "$SKIP_BUILD" = false ]; then
     docker build \
         --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
         --build-arg NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
-        --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID="$NEXT_PUBLIC_GOOGLE_CLIENT_ID" \
         --build-arg NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER="$NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER" \
         -t "${ARTIFACT_REGISTRY}/${SERVICE_NAME}:${TAG}" \
         -t "${ARTIFACT_REGISTRY}/${SERVICE_NAME}:latest" \

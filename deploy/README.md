@@ -39,19 +39,15 @@ The load balancer routes:
 
 ## Quick Start
 
-### 1. Set Environment Variables
-
-```bash
-export NEXT_PUBLIC_GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
-```
-
-### 2. Deploy
+### Deploy
 
 ```bash
 # From the fixads-dashboard directory
 chmod +x deploy/deploy.sh
 ./deploy/deploy.sh
 ```
+
+> **Note:** No Google Client ID needed in the frontend! OAuth is handled server-side by the auth-service.
 
 ## Deployment Options
 
@@ -74,8 +70,7 @@ Deployments are automatic on:
 - Push to `main` branch
 - Version tags (`v*.*.*`)
 
-Required GitHub Secrets:
-- `GOOGLE_CLIENT_ID`: Google OAuth2 Client ID
+No GitHub secrets required! Authentication is handled by Workload Identity Federation.
 
 ## Infrastructure Setup (First Time Only)
 
@@ -84,10 +79,7 @@ If the frontend infrastructure doesn't exist yet:
 ```bash
 cd /path/to/fixads-infrastructure/terraform
 
-# Add frontend_google_client_id to terraform.tfvars
-echo 'frontend_google_client_id = "YOUR_CLIENT_ID.apps.googleusercontent.com"' >> terraform.tfvars
-
-# Apply Terraform changes
+# Apply Terraform changes (enable_frontend=true by default)
 terraform plan -out=tfplan
 terraform apply tfplan
 ```
@@ -96,12 +88,13 @@ terraform apply tfplan
 
 ### Build-time Variables (baked into the bundle)
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `https://dev.appfixads.xyz` |
 | `NEXT_PUBLIC_APP_URL` | Frontend URL | `https://dev.appfixads.xyz` |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth2 Client ID | `xxx.apps.googleusercontent.com` |
 | `NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER` | Enable Smart Optimizer | `true` |
+
+> **Note:** Google OAuth credentials are NOT needed in the frontend. Authentication is handled server-side by the auth-service (`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are configured there).
 
 ### Runtime Variables (set in Cloud Run)
 
