@@ -4,7 +4,7 @@ import type { GoogleOAuthResponse, TokenPair, User } from "../types";
 const AUTH_PATH = "auth/v1";
 
 export interface GoogleOAuthStartResponse {
-  auth_url: string;
+  authorization_url: string;
   state: string;
 }
 

@@ -19,7 +19,7 @@ export function useStartGoogleOAuth() {
     },
     onSuccess: (data) => {
       // Redirect to Google OAuth
-      window.location.href = data.auth_url;
+      window.location.href = data.authorization_url;
     },
     onError: (error) => {
       toast.error("Failed to start authentication", {
