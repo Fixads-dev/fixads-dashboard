@@ -1,0 +1,143 @@
+# =============================================================================
+# CD Workflow - Frontend Dashboard Deployment
+# =============================================================================
+# Deploys to Google Cloud Run on:
+# - Push to main branch (automatic deployment)
+# - Version tags (v*.*.*)
+# - Manual dispatch
+#
+# Uses Workload Identity Federation (no service account keys)
+# =============================================================================
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+# Workload Identity Federation permissions
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: optical-net-479021-u8
+  REGION: europe-west3
+  SERVICE_NAME: fixads-frontend
+  ARTIFACT_REGISTRY: europe-west3-docker.pkg.dev/optical-net-479021-u8/fixads-images
+  WORKLOAD_IDENTITY_PROVIDER: projects/277283350878/locations/global/workloadIdentityPools/github/providers/github-actions
+  SERVICE_ACCOUNT: github-actions@optical-net-479021-u8.iam.gserviceaccount.com
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build and Deploy
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Determine version tag
+      # -----------------------------------------------------------------------
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="${{ github.sha }}"
+            VERSION="${VERSION:0:7}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      # -----------------------------------------------------------------------
+      # Authenticate to Google Cloud via Workload Identity Federation
+      # -----------------------------------------------------------------------
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      # -----------------------------------------------------------------------
+      # Configure Docker for Artifact Registry
+      # -----------------------------------------------------------------------
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # -----------------------------------------------------------------------
+      # Build Docker Image
+      # -----------------------------------------------------------------------
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=https://dev.appfixads.xyz \
+            --build-arg NEXT_PUBLIC_APP_URL=https://dev.appfixads.xyz \
+            --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+            --build-arg NEXT_PUBLIC_ENABLE_SMART_OPTIMIZER=true \
+            -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ steps.version.outputs.version }} \
+            -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:latest \
+            .
+
+      # -----------------------------------------------------------------------
+      # Push Docker Image to Artifact Registry
+      # -----------------------------------------------------------------------
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ steps.version.outputs.version }}
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:latest
+
+      # -----------------------------------------------------------------------
+      # Deploy to Cloud Run
+      # -----------------------------------------------------------------------
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ steps.version.outputs.version }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --ingress internal-and-cloud-load-balancing \
+            --min-instances 0 \
+            --max-instances 10 \
+            --memory 512Mi \
+            --cpu 1 \
+            --concurrency 80 \
+            --timeout 60 \
+            --cpu-boost \
+            --set-env-vars "NODE_ENV=production,HOSTNAME=0.0.0.0,PORT=8080" \
+            --quiet
+
+      # -----------------------------------------------------------------------
+      # Output deployment info
+      # -----------------------------------------------------------------------
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | ${{ env.SERVICE_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | ${{ env.REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | https://dev.appfixads.xyz |" >> $GITHUB_STEP_SUMMARY
