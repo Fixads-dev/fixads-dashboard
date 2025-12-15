@@ -4,6 +4,7 @@ import { Loader2, Play, Sparkles, Type } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -11,91 +12,136 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
 import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import {
-  OptimizationProgress,
-  SuggestionCard,
   useApplyTextChanges,
   useTextOptimizerAnalyze,
-  useTextOptimizerStatus,
+  type AnalyzedAssetGroup,
+  type TextOptimizerResponse,
 } from "@/features/optimizer";
 import { EmptyState } from "@/shared/components";
 
 export function TextOptimizerContent() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
-  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
-  const [runId, setRunId] = useState<string | null>(null);
+  const [campaignDescription, setCampaignDescription] = useState<string>("");
+  const [analysisResult, setAnalysisResult] = useState<TextOptimizerResponse | null>(null);
+  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
 
   const { data: accounts } = useAccounts();
   const { data: campaigns } = useCampaigns(
-    selectedAccountId ? { accountId: selectedAccountId } : undefined,
+    selectedAccountId ? { account_id: selectedAccountId } : undefined,
   );
   const { data: assetGroups } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
   const { mutate: analyze, isPending: isAnalyzing } = useTextOptimizerAnalyze();
-  const { data: statusData } = useTextOptimizerStatus(runId);
   const { mutate: applyChanges, isPending: isApplying } = useApplyTextChanges();
 
   const handleAnalyze = () => {
-    if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId) return;
+    if (!selectedAccountId || !selectedCampaignId || !campaignDescription) return;
 
     analyze(
       {
         accountId: selectedAccountId,
-        campaignId: selectedCampaignId,
-        assetGroupId: selectedAssetGroupId,
+        request: {
+          campaign_id: selectedCampaignId,
+          campaign_description: campaignDescription,
+        },
       },
       {
         onSuccess: (data) => {
-          setRunId(data.runId);
-          setSelectedSuggestions(new Set());
+          setAnalysisResult(data);
+          setSelectedAssets(new Set());
         },
       },
     );
   };
 
   const handleApply = () => {
-    if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId) return;
-    if (selectedSuggestions.size === 0) return;
+    if (!selectedAccountId || !analysisResult || selectedAssets.size === 0) return;
 
-    const changes = statusData?.suggestions
-      .filter((s) => selectedSuggestions.has(s.id))
-      .map((s) => ({ assetId: s.assetId, newText: s.suggestedText }));
+    // Build apply request from selected suggestions
+    const assetGroupsToApply = analysisResult.asset_groups
+      .filter((ag) =>
+        ag.suggested_assets.some((sa) =>
+          selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`),
+        ),
+      )
+      .map((ag) => ({
+        asset_group_id: ag.asset_group_id,
+        asset_group_name: ag.asset_group_name,
+        suggested_assets: ag.suggested_assets
+          .filter((sa) =>
+            selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`),
+          )
+          .map((sa) => ({
+            field_type: sa.field_type,
+            text: sa.text,
+            reason: sa.reason,
+          })),
+      }));
 
-    if (!changes?.length) return;
+    if (assetGroupsToApply.length === 0) return;
 
-    applyChanges({
-      accountId: selectedAccountId,
-      campaignId: selectedCampaignId,
-      assetGroupId: selectedAssetGroupId,
-      changes,
+    applyChanges(
+      {
+        accountId: selectedAccountId,
+        request: {
+          campaign_id: analysisResult.campaign_id,
+          asset_groups: assetGroupsToApply,
+        },
+      },
+      {
+        onSuccess: () => {
+          setAnalysisResult(null);
+          setSelectedAssets(new Set());
+        },
+      },
+    );
+  };
+
+  const toggleAsset = (assetKey: string) => {
+    setSelectedAssets((prev) => {
+      const next = new Set(prev);
+      if (next.has(assetKey)) {
+        next.delete(assetKey);
+      } else {
+        next.add(assetKey);
+      }
+      return next;
     });
   };
 
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => {
+  const selectAllInGroup = (group: AnalyzedAssetGroup) => {
+    setSelectedAssets((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+      for (const sa of group.suggested_assets) {
+        next.add(`${group.asset_group_id}-${sa.field_type}-${sa.text}`);
       }
       return next;
     });
   };
 
   const selectAll = () => {
-    if (statusData?.suggestions) {
-      setSelectedSuggestions(new Set(statusData.suggestions.map((s) => s.id)));
+    if (!analysisResult) return;
+    const allKeys = new Set<string>();
+    for (const ag of analysisResult.asset_groups) {
+      for (const sa of ag.suggested_assets) {
+        allKeys.add(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`);
+      }
     }
+    setSelectedAssets(allKeys);
   };
 
-  const isReady = selectedAccountId && selectedCampaignId && selectedAssetGroupId;
-  const isProcessing = statusData?.status === "pending" || statusData?.status === "processing";
-  const hasResults = statusData?.status === "completed" && statusData.suggestions.length > 0;
+  // Helper to get display name for account
+  const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
+    acc.descriptive_name ?? acc.customer_id;
+
+  const isReady = selectedAccountId && selectedCampaignId && campaignDescription.trim();
+  const totalSuggestions =
+    analysisResult?.asset_groups.reduce((sum, ag) => sum + ag.suggested_assets.length, 0) ?? 0;
 
   return (
     <div className="space-y-6">
@@ -110,18 +156,18 @@ export function TextOptimizerContent() {
             <Type className="h-5 w-5" />
             Select Campaign
           </CardTitle>
-          <CardDescription>Choose an account, campaign, and asset group to analyze</CardDescription>
+          <CardDescription>Choose an account and campaign to analyze</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>
               <SelectContent>
-                {accounts?.items.map((account) => (
+                {accounts?.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.descriptiveName}
+                    {getAccountDisplayName(account)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -136,37 +182,34 @@ export function TextOptimizerContent() {
                 <SelectValue placeholder="Select campaign" />
               </SelectTrigger>
               <SelectContent>
-                {campaigns?.items.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
+                {campaigns?.map((campaign) => (
+                  <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
                     {campaign.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedAssetGroupId}
-              onValueChange={setSelectedAssetGroupId}
-              disabled={!selectedCampaignId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select asset group" />
-              </SelectTrigger>
-              <SelectContent>
-                {assetGroups?.items.map((group) => (
-                  <SelectItem key={group.id} value={group.id}>
-                    {group.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing || isProcessing}>
+          <div>
+            <label htmlFor="campaign-description" className="text-sm font-medium">
+              Campaign Description
+            </label>
+            <Textarea
+              id="campaign-description"
+              placeholder="Describe your product or service to help generate better suggestions..."
+              value={campaignDescription}
+              onChange={(e) => setCampaignDescription(e.target.value)}
+              className="mt-1.5"
+              rows={3}
+            />
+          </div>
+
+          <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing}>
             {isAnalyzing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Starting...
+                Analyzing...
               </>
             ) : (
               <>
@@ -178,51 +221,89 @@ export function TextOptimizerContent() {
         </CardContent>
       </Card>
 
-      {isProcessing && statusData && (
-        <OptimizationProgress
-          status={statusData.status}
-          progress={statusData.progress}
-          message={statusData.message}
-        />
-      )}
-
-      {hasResults && (
+      {analysisResult && totalSuggestions > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Suggestions ({statusData.suggestions.length})</h2>
+            <h2 className="text-lg font-semibold">
+              Suggestions for {analysisResult.campaign_name}
+            </h2>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={selectAll}>
-                Select All
+                Select All ({totalSuggestions})
               </Button>
               <Button
                 size="sm"
                 onClick={handleApply}
-                disabled={selectedSuggestions.size === 0 || isApplying}
+                disabled={selectedAssets.size === 0 || isApplying}
               >
                 {isApplying ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Sparkles className="mr-2 h-4 w-4" />
                 )}
-                Apply ({selectedSuggestions.size})
+                Apply ({selectedAssets.size})
               </Button>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {statusData.suggestions.map((suggestion) => (
-              <SuggestionCard
-                key={suggestion.id}
-                suggestion={suggestion}
-                isSelected={selectedSuggestions.has(suggestion.id)}
-                onToggle={toggleSuggestion}
-              />
-            ))}
-          </div>
+          {analysisResult.asset_groups.map((group) => (
+            <Card key={group.asset_group_id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{group.asset_group_name}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => selectAllInGroup(group)}
+                  >
+                    Select All
+                  </Button>
+                </div>
+                {group.issues.length > 0 && (
+                  <CardDescription className="text-amber-600">
+                    Issues: {group.issues.join(", ")}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {group.suggested_assets.map((suggestion) => {
+                  const key = `${group.asset_group_id}-${suggestion.field_type}-${suggestion.text}`;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start gap-3 rounded-lg border p-3"
+                    >
+                      <Checkbox
+                        checked={selectedAssets.has(key)}
+                        onCheckedChange={() => toggleAsset(key)}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground uppercase">
+                            {suggestion.field_type}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium">{suggestion.text}</p>
+                        {suggestion.reason && (
+                          <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {group.suggested_assets.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No suggestions for this asset group
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {statusData?.status === "completed" && statusData.suggestions.length === 0 && (
+      {analysisResult && totalSuggestions === 0 && (
         <EmptyState
           icon={Sparkles}
           title="No suggestions found"

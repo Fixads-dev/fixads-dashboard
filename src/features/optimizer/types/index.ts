@@ -176,3 +176,36 @@ export interface BadAssetHistoryResponse {
 // Legacy types for backwards compatibility
 export type ApplyChangesRequest = TextOptimizerApplyRequest | SmartOptimizerApplyRequest;
 export type ApplyChangesResponse = TextOptimizerApplyResponse | SmartOptimizerApplyResponse;
+
+/**
+ * Legacy BadAsset type for BadAssetCard component
+ */
+export interface BadAsset {
+  id: string;
+  assetId: string;
+  assetType: AssetFieldType;
+  text: string;
+  classification: BadAssetClassification;
+  reason: string;
+  suggestedReplacement?: string;
+  metrics: {
+    impressions: number;
+    clicks: number;
+    cost: number;
+    age: number;
+  };
+}
+
+/**
+ * Legacy TextSuggestion type for SuggestionCard component
+ */
+export interface TextSuggestion {
+  id: string;
+  assetId: string;
+  assetType: AssetFieldType;
+  originalText: string;
+  suggestedText: string;
+  reason: string;
+  improvementType: "clarity" | "engagement" | "keywords" | "compliance";
+  confidenceScore: number;
+}

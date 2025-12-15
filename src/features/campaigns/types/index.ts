@@ -61,7 +61,7 @@ export interface Asset {
  * Suggested asset from AI generation
  */
 export interface SuggestedAsset {
-  type: AssetFieldType;
+  field_type: AssetFieldType;
   text: string;
   reason?: string;
 }

@@ -3,7 +3,7 @@
 import { ArrowRight, Building2, Megaphone, Sparkles, Type } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCurrentUser } from "@/features/auth";
+import { getUserDisplayName, useCurrentUser } from "@/features/auth";
 import { ROUTES } from "@/shared/lib/constants";
 
 const quickActions = [
@@ -40,7 +40,7 @@ export function DashboardContent() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back{user?.displayName ? `, ${user.displayName.split(" ")[0]}` : ""}
+          Welcome back{user ? `, ${getUserDisplayName(user).split(" ")[0]}` : ""}
         </h1>
         <p className="text-muted-foreground">
           Here&apos;s an overview of your Google Ads optimization dashboard.

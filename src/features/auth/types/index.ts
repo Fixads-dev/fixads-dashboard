@@ -12,6 +12,15 @@ export interface User {
   updated_at?: string;
 }
 
+// Computed properties for UI convenience
+export function getUserDisplayName(user: User): string {
+  return user.full_name ?? user.email.split("@")[0];
+}
+
+export function getUserPhotoUrl(user: User): string | undefined {
+  return user.picture;
+}
+
 /**
  * Token pair from fixads_token
  */

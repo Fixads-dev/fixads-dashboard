@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useCurrentUser, useLogout } from "@/features/auth";
+import { getUserDisplayName, getUserPhotoUrl, useCurrentUser, useLogout } from "@/features/auth";
 import { formatDate } from "@/shared/lib/format";
 
 export function SettingsContent() {
@@ -22,6 +22,9 @@ export function SettingsContent() {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const displayName = user ? getUserDisplayName(user) : "User";
+  const photoUrl = user ? getUserPhotoUrl(user) : undefined;
 
   return (
     <div className="space-y-6">
@@ -39,23 +42,23 @@ export function SettingsContent() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={user?.photoUrl ?? undefined} alt={user?.displayName} />
+                <AvatarImage src={photoUrl} alt={displayName} />
                 <AvatarFallback className="text-lg">
-                  {user?.displayName ? (
-                    getInitials(user.displayName)
+                  {user ? (
+                    getInitials(displayName)
                   ) : (
                     <User2 className="h-8 w-8" />
                   )}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold">{user?.displayName ?? "User"}</p>
+                <p className="font-semibold">{displayName}</p>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
               </div>
             </div>
-            {user?.createdAt && (
+            {user?.created_at && (
               <p className="text-sm text-muted-foreground">
-                Member since {formatDate(user.createdAt, "MMMM yyyy")}
+                Member since {formatDate(user.created_at, "MMMM yyyy")}
               </p>
             )}
           </CardContent>
