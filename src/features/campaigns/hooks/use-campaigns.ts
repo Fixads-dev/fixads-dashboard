@@ -7,8 +7,9 @@ import type { CampaignFilters } from "../types";
 
 export function useCampaigns(filters?: CampaignFilters) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.CAMPAIGNS(filters?.accountId ?? "all"), filters],
+    queryKey: [...QUERY_KEYS.CAMPAIGNS(filters?.account_id ?? "all"), filters],
     queryFn: () => campaignsApi.getCampaigns(filters),
+    enabled: !!filters?.account_id, // Require account_id
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

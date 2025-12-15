@@ -39,6 +39,9 @@ export function AccountCard({
     return id;
   };
 
+  const isConnected = account.status === "active";
+  const displayName = account.descriptive_name ?? formatCustomerId(account.customer_id);
+
   return (
     <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -47,9 +50,9 @@ export function AccountCard({
             <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-base font-semibold">{account.descriptiveName}</CardTitle>
+            <CardTitle className="text-base font-semibold">{displayName}</CardTitle>
             <CardDescription className="font-mono text-xs">
-              {formatCustomerId(account.customerId)}
+              {formatCustomerId(account.customer_id)}
             </CardDescription>
           </div>
         </div>
@@ -85,13 +88,16 @@ export function AccountCard({
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={account.isConnected ? "default" : "secondary"}>
-            {account.isConnected ? "Connected" : "Disconnected"}
+          <Badge variant={isConnected ? "default" : "secondary"}>
+            {isConnected ? "Connected" : "Disconnected"}
           </Badge>
-          {account.isManager && <Badge variant="outline">Manager Account</Badge>}
-          <span className="text-xs text-muted-foreground">
-            {account.currencyCode} &middot; {account.timeZone}
-          </span>
+          {account.is_manager && <Badge variant="outline">Manager Account</Badge>}
+          {account.currency_code && (
+            <span className="text-xs text-muted-foreground">
+              {account.currency_code}
+              {account.time_zone && ` · ${account.time_zone}`}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

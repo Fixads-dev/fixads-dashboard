@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { QUERY_KEYS, ROUTES } from "@/shared/lib/constants";
 import { accountsApi } from "../api/accounts-api";
-import type { GoogleAdsOAuthCallbackParams } from "../types";
+import type { ConnectAccountRequest, GoogleAdsOAuthCallbackParams } from "../types";
 
 /**
  * Hook to start the Google Ads OAuth flow
@@ -18,7 +18,7 @@ export function useStartConnectAccount() {
       return response;
     },
     onSuccess: (data) => {
-      window.location.href = data.auth_url;
+      window.location.href = data.authorization_url;
     },
     onError: (error) => {
       toast.error("Failed to start account connection", {
@@ -40,7 +40,7 @@ export function useCompleteConnectAccount() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
       toast.success("Account connected successfully", {
-        description: `Connected ${data.descriptiveName}`,
+        description: `Connected ${data.descriptive_name ?? data.customer_id}`,
       });
       router.replace(ROUTES.ACCOUNTS);
     },
@@ -49,6 +49,28 @@ export function useCompleteConnectAccount() {
         description: error.message,
       });
       router.replace(ROUTES.ACCOUNTS);
+    },
+  });
+}
+
+/**
+ * Hook to connect account directly with refresh token
+ */
+export function useConnectAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ConnectAccountRequest) => accountsApi.connectAccount(params),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+      toast.success("Account connected successfully", {
+        description: `Connected ${data.descriptive_name ?? data.customer_id}`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to connect account", {
+        description: error.message,
+      });
     },
   });
 }

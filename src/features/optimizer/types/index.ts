@@ -1,31 +1,57 @@
-import type { AssetType } from "@/features/campaigns";
+import type { AssetFieldType, Asset, SuggestedAsset } from "@/features/campaigns";
 
 /**
- * Text Optimizer Types
+ * Text Optimizer Types - matches API (snake_case)
  */
 export interface TextOptimizerRequest {
-  accountId: string;
-  campaignId: string;
-  assetGroupId: string;
+  campaign_id: string;
+  campaign_description: string;
+  asset_group_descriptions?: Record<string, string>;
 }
 
-export interface TextSuggestion {
-  id: string;
-  assetId: string;
-  originalText: string;
-  suggestedText: string;
-  assetType: AssetType;
-  improvementType: "clarity" | "engagement" | "keywords" | "compliance";
-  confidenceScore: number;
-  reason: string;
+/**
+ * Asset group result from text optimizer analysis
+ */
+export interface AnalyzedAssetGroup {
+  asset_group_id: string;
+  asset_group_name: string;
+  existing_assets: Asset[];
+  suggested_assets: SuggestedAsset[];
+  issues: string[];
 }
 
 export interface TextOptimizerResponse {
-  runId: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  progress: number;
-  suggestions: TextSuggestion[];
-  message?: string;
+  campaign_id: string;
+  campaign_name: string;
+  description_text: string;
+  asset_groups: AnalyzedAssetGroup[];
+}
+
+/**
+ * Text Optimizer Apply Request
+ */
+export interface TextOptimizerApplyRequest {
+  campaign_id: string;
+  asset_groups: Array<{
+    asset_group_id: string;
+    asset_group_name?: string;
+    suggested_assets: Array<{
+      field_type: AssetFieldType;
+      text: string;
+      reason?: string;
+    }>;
+  }>;
+  assets_to_pause?: Array<{
+    asset_group_asset_resource_name: string;
+    type: string;
+    text: string;
+  }>;
+}
+
+export interface TextOptimizerApplyResponse {
+  assets_created: number;
+  assets_paused: number;
+  errors: string[];
 }
 
 /**
@@ -33,82 +59,96 @@ export interface TextOptimizerResponse {
  */
 export type BadAssetClassification = "ZOMBIE" | "MONEY_WASTER" | "CLICKBAIT" | "TREND_DROPPER";
 
-export interface BadAssetMetrics {
-  impressions: number;
-  clicks: number;
-  cost: number;
-  conversions: number;
-  age: number;
-  ctr?: number;
-  cvr?: number;
+export interface AssetToRemove {
+  asset_id: string;
+  asset_type: AssetFieldType;
+  text: string;
+  reason_code: BadAssetClassification;
+  severity_score: number;
+  metrics?: {
+    impressions: number;
+    clicks: number;
+    cost: number;
+    conversions: number;
+  };
 }
 
-export interface BadAsset {
-  id: string;
-  assetId: string;
+export interface AssetToAdd {
+  asset_type: AssetFieldType;
   text: string;
-  assetType: AssetType;
-  classification: BadAssetClassification;
-  reason: string;
-  metrics: BadAssetMetrics;
-  suggestedReplacement?: string;
+  compliance_passed: boolean;
+  compliance_violations?: string[];
 }
 
 export interface SmartOptimizerRequest {
-  accountId: string;
-  campaignId: string;
-  assetGroupId: string;
-  targetCpa?: number;
+  campaign_id: string;
+  asset_group_id: string;
+  product_description: string;
+  brand_name?: string;
+  target_audience?: string;
+  tone?: "professional" | "casual" | "persuasive";
+  max_replacements?: number;
 }
 
 export interface SmartOptimizerResponse {
-  runId: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  progress: number;
-  badAssets: BadAsset[];
-  totalAnalyzed: number;
-  message?: string;
+  optimization_run_id: string;
+  campaign_id: string;
+  campaign_name: string;
+  asset_group_id: string;
+  asset_group_name: string;
+  assets_to_remove: AssetToRemove[];
+  assets_to_add: AssetToAdd[];
+  summary: {
+    total_analyzed: number;
+    zombies_found: number;
+    money_wasters_found: number;
+    clickbait_found: number;
+    trend_droppers_found: number;
+    suggestions_generated: number;
+    compliant_suggestions: number;
+  };
+}
+
+export interface SmartOptimizerApplyRequest {
+  optimization_run_id: string;
+  campaign_id: string;
+  asset_group_id: string;
+  asset_ids_to_remove: string[];
+  assets_to_add: AssetToAdd[];
+}
+
+export interface SmartOptimizerApplyResponse {
+  assets_removed: number;
+  assets_created: number;
+  bad_assets_logged: number;
+  errors: string[];
 }
 
 /**
  * Compliance Check Types
  */
-export interface ComplianceViolation {
-  rule: string;
-  message: string;
-  position?: number;
-}
-
 export interface ComplianceCheckRequest {
   text: string;
-  assetType: AssetType;
+  asset_type: AssetFieldType;
 }
 
 export interface ComplianceCheckResponse {
-  isCompliant: boolean;
-  violations: ComplianceViolation[];
+  is_compliant: boolean;
+  violations: string[];
 }
 
 /**
- * Apply Changes Types
+ * Target CPA Types
  */
-export interface ApplyChangesRequest {
-  accountId: string;
-  campaignId: string;
-  assetGroupId: string;
-  changes: Array<{
-    assetId: string;
-    newText: string;
-  }>;
+export interface TargetCpaRequest {
+  target_cpa_micros: number;
+  currency_code: string;
 }
 
-export interface ApplyChangesResponse {
-  success: boolean;
-  assetsModified: number;
-  errors: Array<{
-    assetId: string;
-    error: string;
-  }>;
+export interface TargetCpaResponse {
+  campaign_id: string;
+  target_cpa_micros: number;
+  currency_code: string;
 }
 
 /**
@@ -116,11 +156,23 @@ export interface ApplyChangesResponse {
  */
 export interface BadAssetHistoryItem {
   id: string;
-  assetId: string;
-  text: string;
-  classification: BadAssetClassification;
-  metrics: BadAssetMetrics;
-  deletedAt: string;
-  accountId: string;
-  campaignId: string;
+  asset_id: string;
+  asset_type: AssetFieldType;
+  asset_text: string;
+  failure_reason_code: BadAssetClassification;
+  snapshot_impressions?: number;
+  snapshot_clicks?: number;
+  snapshot_cost?: number;
+  snapshot_conversions?: number;
+  snapshot_ctr?: number;
+  created_at: string;
 }
+
+export interface BadAssetHistoryResponse {
+  items: BadAssetHistoryItem[];
+  total: number;
+}
+
+// Legacy types for backwards compatibility
+export type ApplyChangesRequest = TextOptimizerApplyRequest | SmartOptimizerApplyRequest;
+export type ApplyChangesResponse = TextOptimizerApplyResponse | SmartOptimizerApplyResponse;

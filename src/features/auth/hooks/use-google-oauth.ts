@@ -40,11 +40,25 @@ export function useCompleteGoogleOAuth() {
   return useMutation({
     mutationFn: (params: GoogleOAuthCallbackParams) => authApi.completeGoogleOAuth(params),
     onSuccess: (data) => {
-      setAuth(data.user, data.fixads_token);
+      // Extract Google Ads refresh token if available
+      const googleAdsRefreshToken = data.google_ads?.has_access
+        ? data.google_ads.refresh_token
+        : undefined;
+
+      setAuth(data.user, data.fixads_token, googleAdsRefreshToken);
       queryClient.invalidateQueries({ queryKey: ["user"] });
-      toast.success("Welcome back!", {
-        description: `Signed in as ${data.user.email}`,
-      });
+
+      // Show appropriate message based on Google Ads access
+      if (data.google_ads?.has_access && googleAdsRefreshToken) {
+        toast.success("Welcome back!", {
+          description: `Signed in as ${data.user.email} with Google Ads access`,
+        });
+      } else {
+        toast.success("Welcome back!", {
+          description: `Signed in as ${data.user.email}`,
+        });
+      }
+
       router.replace(ROUTES.HOME);
     },
     onError: (error) => {

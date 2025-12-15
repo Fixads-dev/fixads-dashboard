@@ -31,14 +31,18 @@ export function CampaignsContent() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  const { data: accountsData } = useAccounts();
+  const { data: accounts } = useAccounts();
   const { mutate: connectAccount } = useStartConnectAccount();
 
   const filters: CampaignFilters = {
-    accountId,
+    account_id: accountId,
     status,
     search: debouncedSearch || undefined,
   };
+
+  // Helper to get display name for account
+  const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
+    acc.descriptive_name ?? acc.customer_id;
 
   return (
     <div className="space-y-6">
@@ -67,9 +71,9 @@ export function CampaignsContent() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Accounts</SelectItem>
-            {accountsData?.items.map((account) => (
+            {accounts?.map((account) => (
               <SelectItem key={account.id} value={account.id}>
-                {account.descriptiveName}
+                {getAccountDisplayName(account)}
               </SelectItem>
             ))}
           </SelectContent>

@@ -11,7 +11,7 @@ interface AccountListProps {
 }
 
 export function AccountList({ onConnectClick }: AccountListProps) {
-  const { data, isLoading, error, refetch } = useAccounts();
+  const { data: accounts, isLoading, error, refetch } = useAccounts();
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnectAccount();
 
   if (isLoading) {
@@ -29,7 +29,7 @@ export function AccountList({ onConnectClick }: AccountListProps) {
     return <ErrorFallback error={error} onRetry={() => refetch()} />;
   }
 
-  if (!data?.items.length) {
+  if (!accounts?.length) {
     return (
       <EmptyState
         icon={Building2}
@@ -49,7 +49,7 @@ export function AccountList({ onConnectClick }: AccountListProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {data.items.map((account) => (
+      {accounts.map((account) => (
         <AccountCard
           key={account.id}
           account={account}

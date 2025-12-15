@@ -13,7 +13,8 @@ interface CampaignListProps {
 }
 
 export function CampaignList({ filters, onConnectAccount }: CampaignListProps) {
-  const { data, isLoading, error, refetch } = useCampaigns(filters);
+  const { data: campaigns, isLoading, error, refetch } = useCampaigns(filters);
+  const accountId = filters?.account_id;
 
   if (isLoading) {
     return (
@@ -30,18 +31,18 @@ export function CampaignList({ filters, onConnectAccount }: CampaignListProps) {
     return <ErrorFallback error={error} onRetry={() => refetch()} />;
   }
 
-  if (!data?.items.length) {
+  if (!campaigns?.length) {
     return (
       <EmptyState
         icon={Megaphone}
         title="No campaigns found"
         description={
-          filters?.accountId
+          accountId
             ? "No Performance Max campaigns found for this account."
-            : "Connect a Google Ads account to see your campaigns."
+            : "Select a Google Ads account to see your campaigns."
         }
         action={
-          onConnectAccount && !filters?.accountId
+          onConnectAccount && !accountId
             ? {
                 label: "Connect Account",
                 onClick: onConnectAccount,
@@ -54,8 +55,12 @@ export function CampaignList({ filters, onConnectAccount }: CampaignListProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {data.items.map((campaign) => (
-        <CampaignCard key={campaign.id} campaign={campaign} />
+      {campaigns.map((campaign) => (
+        <CampaignCard
+          key={campaign.campaign_id}
+          campaign={campaign}
+          accountId={accountId ?? ""}
+        />
       ))}
     </div>
   );

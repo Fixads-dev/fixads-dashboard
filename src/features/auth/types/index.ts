@@ -1,43 +1,64 @@
-import type { WithId, WithTimestamps } from "@/shared/types";
-
-export interface User extends WithId, WithTimestamps {
+/**
+ * User from API response (snake_case)
+ */
+export interface User {
+  id: string;
   email: string;
-  displayName: string;
-  photoUrl?: string;
-  isActive: boolean;
+  full_name?: string;
+  picture?: string;
+  role?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
+/**
+ * Token pair from fixads_token
+ */
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
-  token_type: string;
-  expires_in: number;
+  token_type?: string;
+  expires_in?: number;
 }
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
+/**
+ * Google Ads access info from OAuth response
+ */
+export interface GoogleAdsAccess {
+  has_access: boolean;
+  refresh_token?: string;
+  message?: string;
 }
 
+/**
+ * POST /auth/v1/google/callback response
+ */
 export interface GoogleOAuthResponse {
   user: User;
   fixads_token: TokenPair;
-  google_oauth: {
-    access_token: string;
-    refresh_token: string;
-  };
+  google_ads?: GoogleAdsAccess;
+}
+
+/**
+ * POST /auth/v1/refresh response
+ */
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token?: string;
 }
 
 export interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  googleAdsRefreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
 
 export interface AuthActions {
-  setAuth: (user: User, tokens: TokenPair) => void;
+  setAuth: (user: User, tokens: TokenPair, googleAdsRefreshToken?: string) => void;
   setLoading: (isLoading: boolean) => void;
   refresh: () => Promise<boolean>;
   logout: () => void;

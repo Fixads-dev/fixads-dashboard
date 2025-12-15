@@ -32,7 +32,8 @@ export function ConnectCallbackContent() {
     }
 
     hasProcessed.current = true;
-    completeConnect({ code, state });
+    const redirectUri = `${window.location.origin}/accounts/connect/callback`;
+    completeConnect({ code, state, redirect_uri: redirectUri });
   }, [searchParams, completeConnect, router]);
 
   if (isError) {

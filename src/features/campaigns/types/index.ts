@@ -1,53 +1,83 @@
-import type { PaginatedResponse, WithId } from "@/shared/types";
+/**
+ * Campaign types - matches API response (snake_case)
+ */
 
-export type CampaignStatus = "ENABLED" | "PAUSED" | "REMOVED";
+export type CampaignStatus = "ENABLED" | "PAUSED" | "REMOVED" | "UNKNOWN";
 
 export interface CampaignMetrics {
   impressions: number;
   clicks: number;
   cost: number;
   conversions: number;
-  ctr: number;
-  cpc: number;
-  conversionRate: number;
+  ctr?: number;
+  cpc?: number;
+  conversion_rate?: number;
 }
 
-export interface Campaign extends WithId {
+/**
+ * PMax Campaign from GET /google-ads/pmax/campaigns
+ */
+export interface Campaign {
+  campaign_id: string;
   name: string;
   status: CampaignStatus;
-  budget: number;
-  budgetType: "DAILY" | "TOTAL";
-  accountId: string;
+  budget_amount_micros?: number;
+  budget_type?: "DAILY" | "TOTAL";
   metrics?: CampaignMetrics;
-  assetGroupCount: number;
-  lastSyncedAt?: string;
+  asset_group_count?: number;
 }
 
-export interface AssetGroup extends WithId {
-  name: string;
-  status: CampaignStatus;
-  campaignId: string;
-  finalUrl: string;
-  headlines: Asset[];
-  descriptions: Asset[];
-  longHeadlines: Asset[];
+/**
+ * Asset Group from GAQL query
+ */
+export interface AssetGroup {
+  asset_group_id: string;
+  asset_group_name: string;
+  status?: CampaignStatus;
+  campaign_id: string;
+  final_url?: string;
 }
 
 export type AssetType = "HEADLINE" | "DESCRIPTION" | "LONG_HEADLINE";
+export type AssetFieldType = "HEADLINE" | "LONG_HEADLINE" | "DESCRIPTION";
 export type AssetPerformance = "BEST" | "GOOD" | "LOW" | "LEARNING" | "PENDING" | "UNSPECIFIED";
+export type AssetStatus = "OK" | "NOT_GOOD";
 
-export interface Asset extends WithId {
+/**
+ * Asset from Text Optimizer response
+ */
+export interface Asset {
+  resource_name: string;
+  asset_group_asset_resource_name?: string;
+  type: AssetFieldType;
   text: string;
-  type: AssetType;
-  performance: AssetPerformance;
-  assetGroupId: string;
+  text_length?: number;
+  status?: AssetStatus;
+  reasons?: string[];
+  performance?: AssetPerformance;
 }
 
-export type CampaignsResponse = PaginatedResponse<Campaign>;
-export type AssetGroupsResponse = PaginatedResponse<AssetGroup>;
+/**
+ * Suggested asset from AI generation
+ */
+export interface SuggestedAsset {
+  type: AssetFieldType;
+  text: string;
+  reason?: string;
+}
+
+/**
+ * GET /google-ads/pmax/campaigns returns array directly
+ */
+export type CampaignsResponse = Campaign[];
+
+/**
+ * Asset groups from campaign (array)
+ */
+export type AssetGroupsResponse = AssetGroup[];
 
 export interface CampaignFilters {
-  accountId?: string;
+  account_id?: string;
   status?: CampaignStatus;
   search?: string;
 }

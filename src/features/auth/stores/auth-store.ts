@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { AuthStore, TokenPair, User } from "../types";
+import type { AuthStore, RefreshTokenResponse, TokenPair, User } from "../types";
 
 const STORAGE_KEY = "fixads-auth";
 
@@ -10,6 +10,7 @@ const initialState = {
   user: null,
   accessToken: null,
   refreshToken: null,
+  googleAdsRefreshToken: null,
   isAuthenticated: false,
   isLoading: true,
 };
@@ -19,11 +20,12 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       ...initialState,
 
-      setAuth: (user: User, tokens: TokenPair) =>
+      setAuth: (user: User, tokens: TokenPair, googleAdsRefreshToken?: string) =>
         set({
           user,
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
+          googleAdsRefreshToken: googleAdsRefreshToken ?? null,
           isAuthenticated: true,
           isLoading: false,
         }),
@@ -49,10 +51,10 @@ export const useAuthStore = create<AuthStore>()(
             return false;
           }
 
-          const tokens = (await response.json()) as TokenPair;
+          const tokens = (await response.json()) as RefreshTokenResponse;
           set({
             accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
+            refreshToken: tokens.refresh_token ?? get().refreshToken,
           });
           return true;
         } catch {
@@ -76,6 +78,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        googleAdsRefreshToken: state.googleAdsRefreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

@@ -1,20 +1,30 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { POLLING_INTERVALS } from "@/shared/lib/constants";
 import { textOptimizerApi } from "../api/text-optimizer-api";
-import type { ApplyChangesRequest, TextOptimizerRequest } from "../types";
+import type { TextOptimizerApplyRequest, TextOptimizerRequest } from "../types";
+
+interface AnalyzeParams {
+  accountId: string;
+  request: TextOptimizerRequest;
+}
+
+interface ApplyParams {
+  accountId: string;
+  request: TextOptimizerApplyRequest;
+}
 
 export function useTextOptimizerAnalyze() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: TextOptimizerRequest) => textOptimizerApi.analyze(request),
+    mutationFn: ({ accountId, request }: AnalyzeParams) =>
+      textOptimizerApi.analyze(accountId, request),
     onSuccess: (data) => {
-      queryClient.setQueryData(["text-optimizer-status", data.runId], data);
-      toast.info("Analysis started", {
-        description: "We're analyzing your campaign assets...",
+      queryClient.setQueryData(["text-optimizer-result", data.campaign_id], data);
+      toast.success("Analysis complete", {
+        description: `Found suggestions for ${data.asset_groups.length} asset groups`,
       });
     },
     onError: (error) => {
@@ -25,32 +35,17 @@ export function useTextOptimizerAnalyze() {
   });
 }
 
-export function useTextOptimizerStatus(runId: string | null) {
-  return useQuery({
-    queryKey: ["text-optimizer-status", runId],
-    queryFn: () => textOptimizerApi.getStatus(runId as string),
-    enabled: !!runId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "completed" || status === "failed") {
-        return false;
-      }
-      return POLLING_INTERVALS.OPTIMIZATION_STATUS;
-    },
-    placeholderData: (previousData) => previousData,
-  });
-}
-
 export function useApplyTextChanges() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: ApplyChangesRequest) => textOptimizerApi.applyChanges(request),
+    mutationFn: ({ accountId, request }: ApplyParams) =>
+      textOptimizerApi.applyChanges(accountId, request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["asset-groups"] });
       toast.success("Changes applied", {
-        description: `Successfully updated ${data.assetsModified} assets`,
+        description: `Created ${data.assets_created} assets, paused ${data.assets_paused}`,
       });
     },
     onError: (error) => {
