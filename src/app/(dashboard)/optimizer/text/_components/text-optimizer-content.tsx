@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
-import { useAssetGroups, useCampaigns } from "@/features/campaigns";
+import { useCampaigns } from "@/features/campaigns";
 import {
   type AnalyzedAssetGroup,
   type TextOptimizerResponse,
@@ -34,7 +34,6 @@ export function TextOptimizerContent() {
   const { data: campaigns } = useCampaigns(
     selectedAccountId ? { account_id: selectedAccountId } : undefined,
   );
-  const { data: assetGroups } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
   const { mutate: analyze, isPending: isAnalyzing } = useTextOptimizerAnalyze();
   const { mutate: applyChanges, isPending: isApplying } = useApplyTextChanges();
