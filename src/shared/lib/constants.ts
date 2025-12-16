@@ -38,6 +38,7 @@ export const QUERY_KEYS = {
   CAMPAIGNS: (accountId: string) => ["campaigns", accountId] as const,
   CAMPAIGN: (accountId: string, campaignId: string) => ["campaign", accountId, campaignId] as const,
   ASSET_GROUPS: (campaignId: string) => ["asset-groups", campaignId] as const,
+  TEXT_ASSETS: (campaignId: string) => ["text-assets", campaignId] as const,
   OPTIMIZATION_STATUS: (runId: string) => ["optimization-status", runId] as const,
   BAD_ASSET_HISTORY: (accountId: string) => ["bad-asset-history", accountId] as const,
 } as const;

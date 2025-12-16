@@ -1,5 +1,12 @@
 import { apiMethods } from "@/shared/api";
-import type { AssetGroup, Campaign, CampaignFilters, CampaignsResponse } from "../types";
+import type {
+  AssetGroup,
+  AssetGroupWithAssets,
+  Campaign,
+  CampaignFilters,
+  CampaignsResponse,
+  TextAsset,
+} from "../types";
 
 const GOOGLE_ADS_PATH = "google-ads";
 
@@ -84,4 +91,71 @@ export const campaignsApi = {
       `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
       { query },
     ),
+
+  /**
+   * Get text assets (headlines, long headlines, descriptions) for a campaign
+   * POST /google-ads/query?account_id=UUID
+   */
+  getTextAssets: async (accountId: string, campaignId: string): Promise<AssetGroupWithAssets[]> => {
+    const query = `
+      SELECT
+        asset_group.id,
+        asset_group.name,
+        asset_group_asset.field_type,
+        asset_group_asset.status,
+        asset_group_asset.performance_label,
+        asset.id,
+        asset.text_asset.text
+      FROM asset_group_asset
+      WHERE campaign.id = ${campaignId}
+        AND asset_group_asset.field_type IN ('HEADLINE', 'LONG_HEADLINE', 'DESCRIPTION')
+        AND asset_group_asset.status != 'REMOVED'
+    `;
+    const result = await apiMethods.post<{ rows: Record<string, unknown>[] }>(
+      `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
+      { query },
+    );
+
+    const assetGroupsMap = new Map<string, AssetGroupWithAssets>();
+    const fieldTypeToKey: Record<string, "headlines" | "long_headlines" | "descriptions"> = {
+      HEADLINE: "headlines",
+      LONG_HEADLINE: "long_headlines",
+      DESCRIPTION: "descriptions",
+    };
+
+    for (const row of result.rows ?? []) {
+      const assetGroupId = String(row["asset_group.id"] ?? "");
+      const assetGroupName = String(row["asset_group.name"] ?? "");
+      const fieldType = String(row["asset_group_asset.field_type"] ?? "");
+
+      let group = assetGroupsMap.get(assetGroupId);
+      if (!group) {
+        group = {
+          asset_group_id: assetGroupId,
+          asset_group_name: assetGroupName,
+          headlines: [],
+          long_headlines: [],
+          descriptions: [],
+        };
+        assetGroupsMap.set(assetGroupId, group);
+      }
+
+      const key = fieldTypeToKey[fieldType];
+      if (key) {
+        group[key].push({
+          asset_id: String(row["asset.id"] ?? ""),
+          asset_group_id: assetGroupId,
+          asset_group_name: assetGroupName,
+          field_type: fieldType as TextAsset["field_type"],
+          text: String(row["asset.text_asset.text"] ?? ""),
+          status: String(row["asset_group_asset.status"] ?? ""),
+          performance_label: row[
+            "asset_group_asset.performance_label"
+          ] as TextAsset["performance_label"],
+        });
+      }
+    }
+
+    return Array.from(assetGroupsMap.values());
+  },
 };

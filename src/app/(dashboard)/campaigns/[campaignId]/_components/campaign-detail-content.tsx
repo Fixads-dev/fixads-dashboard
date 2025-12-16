@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowLeft, Loader2, Megaphone } from "lucide-react";
+import { ArrowLeft, Loader2, Megaphone, Type } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAssetGroups, useCampaigns } from "@/features/campaigns";
-import type { CampaignStatus } from "@/features/campaigns/types";
+import { useAssetGroups, useCampaigns, useTextAssets } from "@/features/campaigns";
+import type { AssetPerformance, CampaignStatus, TextAsset } from "@/features/campaigns/types";
 import { formatCompact, formatCurrency, formatPercent } from "@/shared/lib/format";
 
 /** Convert cost in micros to dollars */
@@ -19,6 +19,30 @@ const statusColors: Record<CampaignStatus, "default" | "secondary" | "destructiv
   REMOVED: "destructive",
   UNKNOWN: "secondary",
 };
+
+const performanceColors: Record<AssetPerformance, string> = {
+  BEST: "bg-green-500/10 text-green-600 border-green-500/20",
+  GOOD: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  LOW: "bg-red-500/10 text-red-600 border-red-500/20",
+  LEARNING: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  PENDING: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+  UNSPECIFIED: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+};
+
+function TextAssetItem({ asset }: { asset: TextAsset }) {
+  return (
+    <div className="flex items-start justify-between gap-2 rounded border p-2 text-sm">
+      <span className="flex-1">{asset.text}</span>
+      {asset.performance_label && (
+        <span
+          className={`shrink-0 rounded border px-1.5 py-0.5 text-xs font-medium ${performanceColors[asset.performance_label] ?? performanceColors.UNSPECIFIED}`}
+        >
+          {asset.performance_label}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function CampaignDetailContent() {
   const params = useParams();
@@ -33,6 +57,7 @@ export function CampaignDetailContent() {
     accountId,
     campaignId,
   );
+  const { data: textAssets, isLoading: textAssetsLoading } = useTextAssets(accountId, campaignId);
 
   const campaign = campaigns?.find((c) => c.campaign_id === campaignId);
 
@@ -153,6 +178,74 @@ export function CampaignDetailContent() {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">No asset groups found</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Type className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Text Assets</CardTitle>
+          </div>
+          <CardDescription>
+            Headlines, long headlines, and descriptions for this campaign
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {textAssetsLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : textAssets && textAssets.length > 0 ? (
+            <div className="space-y-6">
+              {textAssets.map((group) => (
+                <div key={group.asset_group_id} className="space-y-3">
+                  <h4 className="font-medium text-sm border-b pb-2">{group.asset_group_name}</h4>
+
+                  {group.headlines.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Headlines ({group.headlines.length})
+                      </p>
+                      <div className="space-y-1">
+                        {group.headlines.map((asset) => (
+                          <TextAssetItem key={asset.asset_id} asset={asset} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {group.long_headlines.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Long Headlines ({group.long_headlines.length})
+                      </p>
+                      <div className="space-y-1">
+                        {group.long_headlines.map((asset) => (
+                          <TextAssetItem key={asset.asset_id} asset={asset} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {group.descriptions.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Descriptions ({group.descriptions.length})
+                      </p>
+                      <div className="space-y-1">
+                        {group.descriptions.map((asset) => (
+                          <TextAssetItem key={asset.asset_id} asset={asset} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No text assets found</p>
           )}
         </CardContent>
       </Card>

@@ -73,3 +73,27 @@ export interface CampaignFilters {
   status?: CampaignStatus;
   search?: string;
 }
+
+/**
+ * Text asset from GAQL query for display
+ */
+export interface TextAsset {
+  asset_id: string;
+  asset_group_id: string;
+  asset_group_name: string;
+  field_type: AssetFieldType;
+  text: string;
+  status: string;
+  performance_label?: AssetPerformance;
+}
+
+/**
+ * Text assets grouped by asset group
+ */
+export interface AssetGroupWithAssets {
+  asset_group_id: string;
+  asset_group_name: string;
+  headlines: TextAsset[];
+  long_headlines: TextAsset[];
+  descriptions: TextAsset[];
+}

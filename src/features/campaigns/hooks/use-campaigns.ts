@@ -31,3 +31,12 @@ export function useAssetGroups(accountId: string, campaignId: string) {
     staleTime: 2 * 60 * 1000,
   });
 }
+
+export function useTextAssets(accountId: string, campaignId: string) {
+  return useQuery({
+    queryKey: QUERY_KEYS.TEXT_ASSETS(campaignId),
+    queryFn: () => campaignsApi.getTextAssets(accountId, campaignId),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 2 * 60 * 1000,
+  });
+}
