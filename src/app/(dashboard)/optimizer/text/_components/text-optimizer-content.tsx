@@ -179,11 +179,13 @@ export function TextOptimizerContent() {
                 <SelectValue placeholder="Select campaign" />
               </SelectTrigger>
               <SelectContent>
-                {campaigns?.map((campaign) => (
-                  <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                    {campaign.campaign_name}
-                  </SelectItem>
-                ))}
+                {campaigns
+                  ?.filter((campaign) => campaign.campaign_id)
+                  .map((campaign) => (
+                    <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
+                      {campaign.campaign_name || campaign.campaign_id}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

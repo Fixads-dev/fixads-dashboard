@@ -184,11 +184,13 @@ export function SmartOptimizerContent() {
                 <SelectValue placeholder="Select campaign" />
               </SelectTrigger>
               <SelectContent>
-                {campaigns?.map((campaign) => (
-                  <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                    {campaign.campaign_name}
-                  </SelectItem>
-                ))}
+                {campaigns
+                  ?.filter((campaign) => campaign.campaign_id)
+                  .map((campaign) => (
+                    <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
+                      {campaign.campaign_name || campaign.campaign_id}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -201,11 +203,13 @@ export function SmartOptimizerContent() {
                 <SelectValue placeholder="Select asset group" />
               </SelectTrigger>
               <SelectContent>
-                {assetGroups?.map((group) => (
-                  <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
-                    {group.asset_group_name}
-                  </SelectItem>
-                ))}
+                {assetGroups
+                  ?.filter((group) => group.asset_group_id)
+                  .map((group) => (
+                    <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
+                      {group.asset_group_name || group.asset_group_id}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
