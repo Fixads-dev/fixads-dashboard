@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Play, Sparkles, Type } from "lucide-react";
+import { Bot, Check, Loader2, Pencil, Play, Sparkles, Type, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,11 @@ export function TextOptimizerContent() {
   const [campaignDescription, setCampaignDescription] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<TextOptimizerResponse | null>(null);
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
+  // Editing state: key is "suggestion-{groupId}-{index}" or "existing-{groupId}-{index}"
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editedText, setEditedText] = useState<string>("");
+  // Track edited suggestions: key -> new text
+  const [editedSuggestions, setEditedSuggestions] = useState<Map<string, string>>(new Map());
 
   const { data: accounts } = useAccounts();
   const { data: campaigns } = useCampaigns(
@@ -135,6 +141,37 @@ export function TextOptimizerContent() {
   // Helper to get display name for account
   const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
     acc.descriptive_name ?? acc.customer_id;
+
+  // Edit functions
+  const startEdit = (key: string, currentText: string) => {
+    setEditingKey(key);
+    setEditedText(currentText);
+  };
+
+  const cancelEdit = () => {
+    setEditingKey(null);
+    setEditedText("");
+  };
+
+  const saveEdit = (key: string) => {
+    if (editedText.trim()) {
+      setEditedSuggestions((prev) => {
+        const next = new Map(prev);
+        next.set(key, editedText.trim());
+        return next;
+      });
+    }
+    setEditingKey(null);
+    setEditedText("");
+  };
+
+  // Get the display text for an asset (original or edited)
+  const getDisplayText = (key: string, originalText: string) => {
+    return editedSuggestions.get(key) ?? originalText;
+  };
+
+  // Check if an asset has been edited
+  const isEdited = (key: string) => editedSuggestions.has(key);
 
   const isReady = selectedAccountId && selectedCampaignId && campaignDescription.trim();
   const totalSuggestions =
@@ -261,22 +298,81 @@ export function TextOptimizerContent() {
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
-                {group.suggested_assets.map((suggestion) => {
-                  const key = `${group.asset_group_id}-${suggestion.field_type}-${suggestion.text}`;
+                {group.suggested_assets.map((suggestion, idx) => {
+                  const suggestionKey = `suggestion-${group.asset_group_id}-${idx}`;
+                  const selectKey = `${group.asset_group_id}-${suggestion.field_type}-${getDisplayText(suggestionKey, suggestion.text)}`;
+                  const isEditingThis = editingKey === suggestionKey;
+                  const wasEdited = isEdited(suggestionKey);
+                  const displayText = getDisplayText(suggestionKey, suggestion.text);
+
                   return (
-                    <div key={key} className="flex items-start gap-3 rounded-lg border p-3">
+                    <div
+                      key={suggestionKey}
+                      className="flex items-start gap-3 rounded-lg border p-3"
+                    >
                       <Checkbox
-                        checked={selectedAssets.has(key)}
-                        onCheckedChange={() => toggleAsset(key)}
+                        checked={selectedAssets.has(selectKey)}
+                        onCheckedChange={() => toggleAsset(selectKey)}
+                        disabled={isEditingThis}
                       />
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-muted-foreground uppercase">
                             {suggestion.field_type}
                           </span>
+                          {/* AI Generated indicator */}
+                          {!wasEdited && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                              <Bot className="h-3 w-3" />
+                              AI Generated
+                            </span>
+                          )}
+                          {wasEdited && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                              <Pencil className="h-3 w-3" />
+                              Edited
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm font-medium">{suggestion.text}</p>
-                        {suggestion.reason && (
+
+                        {isEditingThis ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editedText}
+                              onChange={(e) => setEditedText(e.target.value)}
+                              className="text-sm"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => saveEdit(suggestionKey)}
+                              >
+                                <Check className="mr-1 h-3 w-3" />
+                                Save
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={cancelEdit}>
+                                <X className="mr-1 h-3 w-3" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium">{displayText}</p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 shrink-0"
+                              onClick={() => startEdit(suggestionKey, displayText)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {suggestion.reason && !isEditingThis && (
                           <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
                         )}
                       </div>
@@ -319,17 +415,66 @@ export function TextOptimizerContent() {
                     <p className="text-sm font-medium">{group.asset_group_name}</p>
                     {group.existing_assets.length > 0 ? (
                       <div className="space-y-1">
-                        {group.existing_assets.map((asset, idx) => (
-                          <div
-                            key={`${asset.resource_name}-${idx}`}
-                            className="flex items-center justify-between rounded border p-2 text-sm"
-                          >
-                            <span className="flex-1">{asset.text}</span>
-                            <span className="ml-2 text-xs text-muted-foreground uppercase">
-                              {asset.type}
-                            </span>
-                          </div>
-                        ))}
+                        {group.existing_assets.map((asset, idx) => {
+                          const assetKey = `existing-${group.asset_group_id}-${idx}`;
+                          const isEditingThis = editingKey === assetKey;
+                          const wasEdited = isEdited(assetKey);
+                          const displayText = getDisplayText(assetKey, asset.text);
+
+                          return (
+                            <div
+                              key={`${asset.resource_name}-${idx}`}
+                              className="flex items-start gap-2 rounded border p-2 text-sm"
+                            >
+                              {isEditingThis ? (
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    value={editedText}
+                                    onChange={(e) => setEditedText(e.target.value)}
+                                    className="text-sm"
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => saveEdit(assetKey)}
+                                    >
+                                      <Check className="mr-1 h-3 w-3" />
+                                      Save
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={cancelEdit}>
+                                      <X className="mr-1 h-3 w-3" />
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="flex-1">{displayText}</span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {wasEdited && (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                                        <Pencil className="h-2.5 w-2.5" />
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-muted-foreground uppercase">
+                                      {asset.type}
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => startEdit(assetKey, displayText)}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No text assets in this group</p>
