@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Loader2, Play, Sparkles, Zap } from "lucide-react";
+import { AlertCircle, Globe, Loader2, Play, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,11 +44,17 @@ export function SmartOptimizerContent() {
   const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
   const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
 
-  const { data: accounts } = useAccounts();
-  const { data: campaigns } = useCampaigns(
-    selectedAccountId ? { account_id: selectedAccountId } : undefined,
-  );
-  const { data: assetGroups } = useAssetGroups(selectedAccountId, selectedCampaignId);
+  const { data: accounts, isPending: isLoadingAccounts, isError: isAccountsError } = useAccounts();
+  const {
+    data: campaigns,
+    isPending: isLoadingCampaigns,
+    isError: isCampaignsError,
+  } = useCampaigns(selectedAccountId ? { account_id: selectedAccountId } : undefined);
+  const {
+    data: assetGroups,
+    isPending: isLoadingAssetGroups,
+    isError: isAssetGroupsError,
+  } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
   const { mutate: analyze, isPending: isAnalyzing } = useSmartOptimizerAnalyze();
   const { mutate: applyChanges, isPending: isApplying } = useApplySmartChanges();
@@ -204,56 +210,102 @@ export function SmartOptimizerContent() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {getAccountDisplayName(account)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedCampaignId}
-              onValueChange={setSelectedCampaignId}
-              disabled={!selectedAccountId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns
-                  ?.filter((campaign) => campaign.campaign_id)
-                  .map((campaign) => (
-                    <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                      {campaign.campaign_name || campaign.campaign_id}
+            <div className="space-y-1">
+              <Select
+                value={selectedAccountId}
+                onValueChange={setSelectedAccountId}
+                disabled={isLoadingAccounts}
+              >
+                <SelectTrigger>
+                  {isLoadingAccounts ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading accounts...
+                    </span>
+                  ) : isAccountsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select account" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {getAccountDisplayName(account)}
                     </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={selectedAssetGroupId}
-              onValueChange={setSelectedAssetGroupId}
-              disabled={!selectedCampaignId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select asset group" />
-              </SelectTrigger>
-              <SelectContent>
-                {assetGroups
-                  ?.filter((group) => group.asset_group_id)
-                  .map((group) => (
-                    <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
-                      {group.asset_group_name || group.asset_group_id}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Select
+                value={selectedCampaignId}
+                onValueChange={setSelectedCampaignId}
+                disabled={!selectedAccountId || isLoadingCampaigns}
+              >
+                <SelectTrigger>
+                  {selectedAccountId && isLoadingCampaigns ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading campaigns...
+                    </span>
+                  ) : selectedAccountId && isCampaignsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select campaign" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {campaigns
+                    ?.filter((campaign) => campaign.campaign_id)
+                    .map((campaign) => (
+                      <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
+                        {campaign.campaign_name || campaign.campaign_id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Select
+                value={selectedAssetGroupId}
+                onValueChange={setSelectedAssetGroupId}
+                disabled={!selectedCampaignId || isLoadingAssetGroups}
+              >
+                <SelectTrigger>
+                  {selectedCampaignId && isLoadingAssetGroups ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading asset groups...
+                    </span>
+                  ) : selectedCampaignId && isAssetGroupsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select asset group" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {assetGroups
+                    ?.filter((group) => group.asset_group_id)
+                    .map((group) => (
+                      <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
+                        {group.asset_group_name || group.asset_group_id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
@@ -269,6 +321,7 @@ export function SmartOptimizerContent() {
               }
               className="mt-1.5"
               rows={3}
+              disabled={!selectedAssetGroupId}
             />
           </div>
 
@@ -284,8 +337,12 @@ export function SmartOptimizerContent() {
                     id={`lang-${lang.code}`}
                     checked={selectedLanguages.includes(lang.code)}
                     onCheckedChange={() => toggleLanguage(lang.code)}
+                    disabled={!selectedAssetGroupId}
                   />
-                  <Label htmlFor={`lang-${lang.code}`} className="text-sm cursor-pointer">
+                  <Label
+                    htmlFor={`lang-${lang.code}`}
+                    className={`text-sm ${selectedAssetGroupId ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+                  >
                     {lang.native}
                   </Label>
                 </div>
@@ -361,7 +418,7 @@ export function SmartOptimizerContent() {
                     </CardTitle>
                     <CardDescription>Select assets to remove</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={selectAllBadAssets}>
+                  <Button variant="outline" size="sm" onClick={selectAllBadAssets} disabled={isApplying}>
                     Select All
                   </Button>
                 </div>
@@ -375,6 +432,7 @@ export function SmartOptimizerContent() {
                     <Checkbox
                       checked={selectedToRemove.has(getRemovalId(asset))}
                       onCheckedChange={() => toggleRemove(asset)}
+                      disabled={isApplying}
                     />
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
@@ -412,7 +470,12 @@ export function SmartOptimizerContent() {
                     </CardTitle>
                     <CardDescription>Select assets to add</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={selectAllCompliantSuggestions}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllCompliantSuggestions}
+                    disabled={isApplying}
+                  >
                     Select All Compliant
                   </Button>
                 </div>
@@ -426,7 +489,7 @@ export function SmartOptimizerContent() {
                     <Checkbox
                       checked={selectedToAdd.has(index)}
                       onCheckedChange={() => toggleAdd(index)}
-                      disabled={!asset.compliance_passed}
+                      disabled={!asset.compliance_passed || isApplying}
                     />
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
