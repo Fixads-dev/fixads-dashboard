@@ -124,7 +124,7 @@ jobs:
             --concurrency 80 \
             --timeout 60 \
             --cpu-boost \
-            --set-env-vars "NODE_ENV=production,HOSTNAME=0.0.0.0,PORT=8080" \
+            --set-env-vars "NODE_ENV=production,HOSTNAME=0.0.0.0" \
             --quiet
 
       # -----------------------------------------------------------------------
