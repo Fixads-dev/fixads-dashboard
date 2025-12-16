@@ -39,14 +39,12 @@ export const campaignsApi = {
       const row = result.rows[0];
       return {
         campaign_id: String(row["campaign.id"] ?? campaignId),
-        name: String(row["campaign.name"] ?? ""),
+        campaign_name: String(row["campaign.name"] ?? ""),
         status: (row["campaign.status"] as Campaign["status"]) ?? "UNKNOWN",
-        metrics: {
-          impressions: Number(row["metrics.impressions"] ?? 0),
-          clicks: Number(row["metrics.clicks"] ?? 0),
-          conversions: Number(row["metrics.conversions"] ?? 0),
-          cost: Number(row["metrics.cost_micros"] ?? 0) / 1_000_000,
-        },
+        impressions: Number(row["metrics.impressions"] ?? 0),
+        clicks: Number(row["metrics.clicks"] ?? 0),
+        conversions: Number(row["metrics.conversions"] ?? 0),
+        cost_micros: Number(row["metrics.cost_micros"] ?? 0),
       };
     }
     return null;

@@ -10,6 +10,9 @@ import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import type { CampaignStatus } from "@/features/campaigns/types";
 import { formatCompact, formatCurrency, formatPercent } from "@/shared/lib/format";
 
+/** Convert cost in micros to dollars */
+const microsToDollars = (micros: number) => micros / 1_000_000;
+
 const statusColors: Record<CampaignStatus, "default" | "secondary" | "destructive"> = {
   ENABLED: "default",
   PAUSED: "secondary",
@@ -32,6 +35,9 @@ export function CampaignDetailContent() {
   );
 
   const campaign = campaigns?.find((c) => c.campaign_id === campaignId);
+
+  // Calculate CTR from flat metrics
+  const ctr = campaign?.impressions ? (campaign.clicks / campaign.impressions) * 100 : 0;
 
   if (campaignsLoading) {
     return (
@@ -59,12 +65,6 @@ export function CampaignDetailContent() {
     );
   }
 
-  const ctr =
-    campaign.metrics?.ctr ??
-    (campaign.metrics?.impressions
-      ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100
-      : 0);
-
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-4">
@@ -82,42 +82,40 @@ export function CampaignDetailContent() {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{campaign.name}</h1>
+            <h1 className="text-2xl font-bold">{campaign.campaign_name}</h1>
             <Badge variant={statusColors[campaign.status] ?? "secondary"}>{campaign.status}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">Campaign ID: {campaign.campaign_id}</p>
         </div>
       </div>
 
-      {campaign.metrics && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Metrics (Last 30 Days)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Impressions</p>
-                <p className="text-2xl font-semibold">
-                  {formatCompact(campaign.metrics.impressions)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Clicks</p>
-                <p className="text-2xl font-semibold">{formatCompact(campaign.metrics.clicks)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Cost</p>
-                <p className="text-2xl font-semibold">{formatCurrency(campaign.metrics.cost)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">CTR</p>
-                <p className="text-2xl font-semibold">{formatPercent(ctr)}</p>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Metrics (Last 30 Days)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Impressions</p>
+              <p className="text-2xl font-semibold">{formatCompact(campaign.impressions)}</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div>
+              <p className="text-sm text-muted-foreground">Clicks</p>
+              <p className="text-2xl font-semibold">{formatCompact(campaign.clicks)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Cost</p>
+              <p className="text-2xl font-semibold">
+                {formatCurrency(microsToDollars(campaign.cost_micros))}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">CTR</p>
+              <p className="text-2xl font-semibold">{formatPercent(ctr)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

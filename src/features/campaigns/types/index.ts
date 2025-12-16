@@ -4,27 +4,19 @@
 
 export type CampaignStatus = "ENABLED" | "PAUSED" | "REMOVED" | "UNKNOWN";
 
-export interface CampaignMetrics {
-  impressions: number;
-  clicks: number;
-  cost: number;
-  conversions: number;
-  ctr?: number;
-  cpc?: number;
-  conversion_rate?: number;
-}
-
 /**
  * PMax Campaign from GET /google-ads/pmax/campaigns
+ * Note: API returns flat structure with campaign_name and flat metrics
  */
 export interface Campaign {
   campaign_id: string;
-  name: string;
+  campaign_name: string;
   status: CampaignStatus;
-  budget_amount_micros?: number;
-  budget_type?: "DAILY" | "TOTAL";
-  metrics?: CampaignMetrics;
-  asset_group_count?: number;
+  // Flat metrics from API (last 30 days)
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
 }
 
 /**

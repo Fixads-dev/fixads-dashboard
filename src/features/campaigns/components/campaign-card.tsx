@@ -3,7 +3,7 @@
 import { Megaphone } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCompact, formatCurrency, formatPercent } from "@/shared/lib/format";
 import type { Campaign, CampaignStatus } from "../types";
 
@@ -19,12 +19,11 @@ const statusColors: Record<CampaignStatus, "default" | "secondary" | "destructiv
   UNKNOWN: "secondary",
 };
 
+/** Convert cost in micros to dollars */
+const microsToDollars = (micros: number) => micros / 1_000_000;
+
 export function CampaignCard({ campaign, accountId }: CampaignCardProps) {
-  const ctr =
-    campaign.metrics?.ctr ??
-    (campaign.metrics?.impressions
-      ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100
-      : 0);
+  const ctr = campaign.impressions ? (campaign.clicks / campaign.impressions) * 100 : 0;
 
   return (
     <Link href={`/campaigns/${campaign.campaign_id}?account=${accountId}`}>
@@ -34,38 +33,31 @@ export function CampaignCard({ campaign, accountId }: CampaignCardProps) {
             <Megaphone className="h-5 w-5 text-blue-500" />
           </div>
           <div className="flex-1 space-y-1">
-            <CardTitle className="text-base font-semibold line-clamp-1">{campaign.name}</CardTitle>
-            {campaign.asset_group_count !== undefined && (
-              <CardDescription className="text-xs">
-                {campaign.asset_group_count} asset groups
-              </CardDescription>
-            )}
+            <CardTitle className="text-base font-semibold line-clamp-1">
+              {campaign.campaign_name}
+            </CardTitle>
           </div>
           <Badge variant={statusColors[campaign.status] ?? "secondary"}>{campaign.status}</Badge>
         </CardHeader>
         <CardContent>
-          {campaign.metrics ? (
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Impressions</p>
-                <p className="font-medium">{formatCompact(campaign.metrics.impressions)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Clicks</p>
-                <p className="font-medium">{formatCompact(campaign.metrics.clicks)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Cost</p>
-                <p className="font-medium">{formatCurrency(campaign.metrics.cost)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">CTR</p>
-                <p className="font-medium">{formatPercent(ctr)}</p>
-              </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Impressions</p>
+              <p className="font-medium">{formatCompact(campaign.impressions)}</p>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No metrics available</p>
-          )}
+            <div>
+              <p className="text-muted-foreground">Clicks</p>
+              <p className="font-medium">{formatCompact(campaign.clicks)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Cost</p>
+              <p className="font-medium">{formatCurrency(microsToDollars(campaign.cost_micros))}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">CTR</p>
+              <p className="font-medium">{formatPercent(ctr)}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </Link>

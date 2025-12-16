@@ -186,7 +186,7 @@ export function SmartOptimizerContent() {
               <SelectContent>
                 {campaigns?.map((campaign) => (
                   <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                    {campaign.name}
+                    {campaign.campaign_name}
                   </SelectItem>
                 ))}
               </SelectContent>
