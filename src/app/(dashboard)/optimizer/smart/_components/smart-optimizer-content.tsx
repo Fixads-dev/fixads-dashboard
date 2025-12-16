@@ -1,10 +1,19 @@
 "use client";
 
-import { Loader2, Play, Sparkles, Zap } from "lucide-react";
+import { Globe, Loader2, Play, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
+const SUPPORTED_LANGUAGES = [
+  { code: "en", label: "English", native: "English" },
+  { code: "de", label: "German", native: "Deutsch" },
+  { code: "he", label: "Hebrew", native: "עברית" },
+  { code: "ru", label: "Russian", native: "Русский" },
+] as const;
+
 import {
   Select,
   SelectContent,
@@ -30,6 +39,7 @@ export function SmartOptimizerContent() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
   const [productDescription, setProductDescription] = useState<string>("");
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
   const [analysisResult, setAnalysisResult] = useState<SmartOptimizerResponse | null>(null);
   const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
   const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
@@ -44,7 +54,13 @@ export function SmartOptimizerContent() {
   const { mutate: applyChanges, isPending: isApplying } = useApplySmartChanges();
 
   const handleAnalyze = () => {
-    if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId || !productDescription)
+    if (
+      !selectedAccountId ||
+      !selectedCampaignId ||
+      !selectedAssetGroupId ||
+      !productDescription ||
+      selectedLanguages.length === 0
+    )
       return;
 
     analyze(
@@ -54,6 +70,7 @@ export function SmartOptimizerContent() {
           campaign_id: selectedCampaignId,
           asset_group_id: selectedAssetGroupId,
           product_description: productDescription,
+          languages: selectedLanguages,
         },
       },
       {
@@ -64,6 +81,22 @@ export function SmartOptimizerContent() {
         },
       },
     );
+  };
+
+  const toggleLanguage = (code: string) => {
+    setSelectedLanguages((prev) => {
+      if (prev.includes(code)) {
+        // Don't allow removing the last language
+        if (prev.length === 1) return prev;
+        return prev.filter((c) => c !== code);
+      }
+      return [...prev, code];
+    });
+  };
+
+  const getLanguageLabel = (code: string) => {
+    const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
+    return lang ? lang.native : code.toUpperCase();
   };
 
   const handleApply = () => {
@@ -144,7 +177,11 @@ export function SmartOptimizerContent() {
     acc.descriptive_name ?? acc.customer_id;
 
   const isReady =
-    selectedAccountId && selectedCampaignId && selectedAssetGroupId && productDescription.trim();
+    selectedAccountId &&
+    selectedCampaignId &&
+    selectedAssetGroupId &&
+    productDescription.trim() &&
+    selectedLanguages.length > 0;
   const hasResults = analysisResult !== null;
   const totalChanges = selectedToRemove.size + selectedToAdd.size;
 
@@ -233,6 +270,30 @@ export function SmartOptimizerContent() {
               className="mt-1.5"
               rows={3}
             />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Output Languages</span>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <div key={lang.code} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`lang-${lang.code}`}
+                    checked={selectedLanguages.includes(lang.code)}
+                    onCheckedChange={() => toggleLanguage(lang.code)}
+                  />
+                  <Label htmlFor={`lang-${lang.code}`} className="text-sm cursor-pointer">
+                    {lang.native}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Select one or more languages. Assets will be generated for each selected language.
+            </p>
           </div>
 
           <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing}>
@@ -372,6 +433,11 @@ export function SmartOptimizerContent() {
                         <span className="text-xs font-medium text-muted-foreground uppercase">
                           {asset.asset_type}
                         </span>
+                        {asset.language && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                            {getLanguageLabel(asset.language)}
+                          </span>
+                        )}
                         {asset.compliance_passed ? (
                           <span className="text-xs text-green-600">Compliant</span>
                         ) : (

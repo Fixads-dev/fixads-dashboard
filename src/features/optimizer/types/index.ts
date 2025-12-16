@@ -84,6 +84,7 @@ export interface AssetToAdd {
   text: string;
   compliance_passed: boolean;
   compliance_violations?: string[];
+  language?: string; // ISO 639-1 code of the generated asset
 }
 
 export interface SmartOptimizerRequest {
@@ -94,6 +95,7 @@ export interface SmartOptimizerRequest {
   target_audience?: string;
   tone?: "professional" | "casual" | "persuasive";
   max_replacements?: number;
+  languages?: string[]; // ISO 639-1 codes: en, de, he, ru
 }
 
 export interface SmartOptimizerResponse {
