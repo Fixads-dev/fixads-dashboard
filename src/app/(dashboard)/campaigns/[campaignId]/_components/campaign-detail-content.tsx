@@ -44,6 +44,13 @@ const statusColors: Record<CampaignStatus, "default" | "secondary" | "destructiv
   UNKNOWN: "secondary",
 };
 
+const statusLabels: Record<CampaignStatus, string> = {
+  ENABLED: "Active",
+  PAUSED: "Paused",
+  REMOVED: "Removed",
+  UNKNOWN: "Pending",
+};
+
 const performanceColors: Record<AssetPerformance, string> = {
   BEST: "bg-green-500/10 text-green-600 border-green-500/20",
   GOOD: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -158,7 +165,7 @@ export function CampaignDetailContent() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{campaign.campaign_name}</h1>
             <Badge variant={statusColors[campaign.status as CampaignStatus] ?? "secondary"}>
-              {campaign.status}
+              {statusLabels[campaign.status as CampaignStatus] ?? campaign.status}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">Campaign ID: {campaign.campaign_id}</p>
@@ -187,6 +194,26 @@ export function CampaignDetailContent() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          {/* New Campaign Notice */}
+          {campaign.impressions === 0 && campaign.clicks === 0 && (
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+                    <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-blue-900 dark:text-blue-100">No activity yet</p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      This campaign hasn&apos;t received any impressions or clicks. Metrics will
+                      appear once the campaign starts serving ads.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* KPI Cards */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
             <KPICard
@@ -547,7 +574,7 @@ export function CampaignDetailContent() {
                         </span>
                       </div>
                     )}
-                    {campaign.budget_amount_micros && (
+                    {campaign.budget_amount_micros != null && campaign.budget_amount_micros > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Daily Budget</span>
                         <span className="font-medium">
@@ -579,7 +606,7 @@ export function CampaignDetailContent() {
                         variant={statusColors[campaign.status as CampaignStatus] ?? "secondary"}
                         className="h-5"
                       >
-                        {campaign.status}
+                        {statusLabels[campaign.status as CampaignStatus] ?? campaign.status}
                       </Badge>
                     </div>
                   </div>
