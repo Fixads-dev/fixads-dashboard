@@ -10,6 +10,28 @@ import type {
 
 const GOOGLE_ADS_PATH = "google-ads";
 
+/**
+ * Get a value from a GAQL row result, handling both flattened and nested formats.
+ * Tries: row["asset_group.id"], row.asset_group?.id, row["assetGroup"]?.["id"]
+ */
+function getRowValue(row: Record<string, unknown>, path: string): unknown {
+  // Try flattened dot-notation key first (e.g., "asset_group.id")
+  if (path in row) return row[path];
+
+  // Try nested object access (e.g., row.asset_group.id)
+  const parts = path.split(".");
+  let current: unknown = row;
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current === "object") {
+      current = (current as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return current;
+}
+
 export const campaignsApi = {
   /**
    * Get all PMax campaigns for an account
@@ -71,15 +93,17 @@ export const campaignsApi = {
       `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
       { query },
     );
-    return (result.rows ?? []).map((row) => ({
-      asset_group_id: String(row["asset_group.id"] ?? ""),
-      asset_group_name: String(row["asset_group.name"] ?? ""),
-      status: row["asset_group.status"] as AssetGroup["status"],
-      campaign_id: campaignId,
-      final_url: Array.isArray(row["asset_group.final_urls"])
-        ? row["asset_group.final_urls"][0]
-        : undefined,
-    }));
+    const rows = result.rows ?? [];
+    return rows.map((row) => {
+      const finalUrls = getRowValue(row, "asset_group.final_urls");
+      return {
+        asset_group_id: String(getRowValue(row, "asset_group.id") ?? ""),
+        asset_group_name: String(getRowValue(row, "asset_group.name") ?? ""),
+        status: getRowValue(row, "asset_group.status") as AssetGroup["status"],
+        campaign_id: campaignId,
+        final_url: Array.isArray(finalUrls) ? String(finalUrls[0]) : undefined,
+      };
+    });
   },
 
   /**
@@ -124,9 +148,9 @@ export const campaignsApi = {
     };
 
     for (const row of result.rows ?? []) {
-      const assetGroupId = String(row["asset_group.id"] ?? "");
-      const assetGroupName = String(row["asset_group.name"] ?? "");
-      const fieldType = String(row["asset_group_asset.field_type"] ?? "");
+      const assetGroupId = String(getRowValue(row, "asset_group.id") ?? "");
+      const assetGroupName = String(getRowValue(row, "asset_group.name") ?? "");
+      const fieldType = String(getRowValue(row, "asset_group_asset.field_type") ?? "");
 
       let group = assetGroupsMap.get(assetGroupId);
       if (!group) {
@@ -143,15 +167,16 @@ export const campaignsApi = {
       const key = fieldTypeToKey[fieldType];
       if (key) {
         group[key].push({
-          asset_id: String(row["asset.id"] ?? ""),
+          asset_id: String(getRowValue(row, "asset.id") ?? ""),
           asset_group_id: assetGroupId,
           asset_group_name: assetGroupName,
           field_type: fieldType as TextAsset["field_type"],
-          text: String(row["asset.text_asset.text"] ?? ""),
-          status: String(row["asset_group_asset.status"] ?? ""),
-          performance_label: row[
-            "asset_group_asset.performance_label"
-          ] as TextAsset["performance_label"],
+          text: String(getRowValue(row, "asset.text_asset.text") ?? ""),
+          status: String(getRowValue(row, "asset_group_asset.status") ?? ""),
+          performance_label: getRowValue(
+            row,
+            "asset_group_asset.performance_label",
+          ) as TextAsset["performance_label"],
         });
       }
     }
