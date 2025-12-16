@@ -418,7 +418,12 @@ export function SmartOptimizerContent() {
                     </CardTitle>
                     <CardDescription>Select assets to remove</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={selectAllBadAssets} disabled={isApplying}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllBadAssets}
+                    disabled={isApplying}
+                  >
                     Select All
                   </Button>
                 </div>
