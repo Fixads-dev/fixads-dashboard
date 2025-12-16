@@ -6,13 +6,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  type AccessibleCustomer,
   useConnectAccount,
   useExchangeCodeForTokens,
   useGetAccessibleCustomers,
 } from "@/features/accounts";
 import { ROUTES } from "@/shared/lib/constants";
+import { AccountSelection } from "./account-selection";
 
-type ConnectionStep = "exchanging" | "fetching_customers" | "connecting" | "error" | "success";
+type ConnectionStep =
+  | "exchanging"
+  | "fetching_customers"
+  | "selecting"
+  | "connecting"
+  | "error"
+  | "success";
 
 export function ConnectCallbackContent() {
   const router = useRouter();
@@ -20,6 +28,9 @@ export function ConnectCallbackContent() {
   const hasProcessed = useRef(false);
   const [step, setStep] = useState<ConnectionStep>("exchanging");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<AccessibleCustomer[]>([]);
+  const [refreshToken, setRefreshToken] = useState<string>("");
+  const [connectingCount, setConnectingCount] = useState({ current: 0, total: 0 });
 
   const exchangeTokens = useExchangeCodeForTokens();
   const getAccessibleCustomers = useGetAccessibleCustomers();
@@ -51,13 +62,15 @@ export function ConnectCallbackContent() {
       { code, state, redirect_uri: redirectUri },
       {
         onSuccess: (tokenData) => {
+          setRefreshToken(tokenData.refresh_token);
+
           // Step 2: Fetch accessible customers
           setStep("fetching_customers");
           getAccessibleCustomers.mutate(tokenData.refresh_token, {
             onSuccess: (customerData) => {
-              const customers = customerData.customers;
+              const fetchedCustomers = customerData.customers;
 
-              if (customers.length === 0) {
+              if (fetchedCustomers.length === 0) {
                 setStep("error");
                 setErrorMessage(
                   "No Google Ads accounts found. Please ensure you have access to at least one Google Ads account.",
@@ -65,27 +78,34 @@ export function ConnectCallbackContent() {
                 return;
               }
 
-              // Step 3: Auto-connect the first customer
-              // In the future, this could show a selection UI if multiple customers exist
-              const customer = customers[0];
-              setStep("connecting");
-              connectAccount.mutate(
-                {
-                  customer_id: customer.customer_id,
-                  refresh_token: tokenData.refresh_token,
-                  login_customer_id: customer.is_manager ? customer.customer_id : undefined,
-                },
-                {
-                  onSuccess: () => {
-                    setStep("success");
-                    router.replace(ROUTES.ACCOUNTS);
+              // If only one regular account, auto-connect it
+              const regularAccounts = fetchedCustomers.filter((c) => !c.is_manager);
+              if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
+                // Single account, auto-connect
+                const customer = fetchedCustomers[0];
+                setStep("connecting");
+                connectAccount.mutate(
+                  {
+                    customer_id: customer.customer_id,
+                    refresh_token: tokenData.refresh_token,
+                    login_customer_id: customer.is_manager ? customer.customer_id : undefined,
                   },
-                  onError: (error) => {
-                    setStep("error");
-                    setErrorMessage(error.message || "Failed to connect account");
+                  {
+                    onSuccess: () => {
+                      setStep("success");
+                      router.replace(ROUTES.ACCOUNTS);
+                    },
+                    onError: (error) => {
+                      setStep("error");
+                      setErrorMessage(error.message || "Failed to connect account");
+                    },
                   },
-                },
-              );
+                );
+              } else {
+                // Multiple accounts or MCC detected - show selection UI
+                setCustomers(fetchedCustomers);
+                setStep("selecting");
+              }
             },
             onError: (error) => {
               setStep("error");
@@ -100,6 +120,41 @@ export function ConnectCallbackContent() {
       },
     );
   }, [searchParams, router, exchangeTokens, getAccessibleCustomers, connectAccount]);
+
+  const handleConnectAccounts = async (
+    accounts: Array<{ customer_id: string; login_customer_id?: string }>,
+  ) => {
+    setStep("connecting");
+    setConnectingCount({ current: 0, total: accounts.length });
+
+    // Connect accounts sequentially
+    for (let i = 0; i < accounts.length; i++) {
+      const account = accounts[i];
+      setConnectingCount({ current: i + 1, total: accounts.length });
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          connectAccount.mutate(
+            {
+              customer_id: account.customer_id,
+              refresh_token: refreshToken,
+              login_customer_id: account.login_customer_id,
+            },
+            {
+              onSuccess: () => resolve(),
+              onError: (error) => reject(error),
+            },
+          );
+        });
+      } catch (error) {
+        // Continue connecting remaining accounts even if one fails
+        console.error(`Failed to connect account ${account.customer_id}:`, error);
+      }
+    }
+
+    setStep("success");
+    router.replace(ROUTES.ACCOUNTS);
+  };
 
   if (step === "error") {
     return (
@@ -124,10 +179,26 @@ export function ConnectCallbackContent() {
     );
   }
 
+  if (step === "selecting") {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center p-4">
+        <AccountSelection
+          customers={customers}
+          onConnect={handleConnectAccounts}
+          isConnecting={connectAccount.isPending}
+        />
+      </div>
+    );
+  }
+
   const stepMessages: Record<ConnectionStep, string> = {
     exchanging: "Exchanging authorization code...",
     fetching_customers: "Fetching accessible accounts...",
-    connecting: "Connecting your account...",
+    selecting: "",
+    connecting:
+      connectingCount.total > 1
+        ? `Connecting account ${connectingCount.current} of ${connectingCount.total}...`
+        : "Connecting your account...",
     error: "",
     success: "Account connected!",
   };
