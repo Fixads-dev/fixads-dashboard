@@ -260,7 +260,9 @@ export function SmartOptimizerContent() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Total Analyzed</p>
-                  <p className="text-lg font-semibold">{analysisResult.summary.total_analyzed}</p>
+                  <p className="text-lg font-semibold">
+                    {analysisResult.summary.total_assets_analyzed}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Bad Assets</p>
@@ -275,7 +277,7 @@ export function SmartOptimizerContent() {
                 <div>
                   <p className="text-muted-foreground">Compliant</p>
                   <p className="text-lg font-semibold text-green-600">
-                    {analysisResult.summary.compliant_suggestions}
+                    {analysisResult.summary.compliance_passed}
                   </p>
                 </div>
               </div>
@@ -318,10 +320,12 @@ export function SmartOptimizerContent() {
                       <p className="text-sm">{asset.text}</p>
                       {asset.metrics && (
                         <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>Impressions: {asset.metrics.impressions}</span>
-                          <span>Clicks: {asset.metrics.clicks}</span>
-                          <span>Cost: {formatCurrency(asset.metrics.cost)}</span>
-                          <span>Conversions: {asset.metrics.conversions}</span>
+                          <span>Impressions: {asset.metrics.impressions ?? 0}</span>
+                          <span>Clicks: {asset.metrics.clicks ?? 0}</span>
+                          <span>
+                            Cost: {formatCurrency((asset.metrics.cost_micros ?? 0) / 1_000_000)}
+                          </span>
+                          <span>Conversions: {asset.metrics.conversions ?? 0}</span>
                         </div>
                       )}
                     </div>

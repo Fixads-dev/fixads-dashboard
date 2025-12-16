@@ -64,12 +64,17 @@ export interface AssetToRemove {
   asset_type: AssetFieldType;
   text: string;
   reason_code: BadAssetClassification;
+  reason_label?: string;
   severity_score: number;
+  details?: string;
   metrics?: {
-    impressions: number;
-    clicks: number;
-    cost: number;
-    conversions: number;
+    impressions?: number;
+    clicks?: number;
+    cost_micros?: number;
+    conversions?: number;
+    ctr?: number;
+    cvr?: number;
+    age_days?: number;
   };
 }
 
@@ -99,13 +104,14 @@ export interface SmartOptimizerResponse {
   assets_to_remove: AssetToRemove[];
   assets_to_add: AssetToAdd[];
   summary: {
-    total_analyzed: number;
-    zombies_found: number;
-    money_wasters_found: number;
-    clickbait_found: number;
-    trend_droppers_found: number;
-    suggestions_generated: number;
-    compliant_suggestions: number;
+    total_assets_analyzed: number;
+    bad_assets_found: number;
+    assets_to_remove: number;
+    assets_to_add: number;
+    compliance_passed: number;
+    compliance_failed: number;
+    bad_history_used: number;
+    target_cpa_micros: number | null;
   };
 }
 
