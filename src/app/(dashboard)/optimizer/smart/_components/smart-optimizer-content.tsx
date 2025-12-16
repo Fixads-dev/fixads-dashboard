@@ -445,9 +445,9 @@ export function SmartOptimizerContent() {
                         )}
                       </div>
                       <p className="text-sm font-medium">{asset.text}</p>
-                      {asset.compliance_violations && asset.compliance_violations.length > 0 && (
+                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
                         <p className="text-xs text-destructive">
-                          Issues: {asset.compliance_violations.join(", ")}
+                          Issues: {asset.compliance_issues.join(", ")}
                         </p>
                       )}
                     </div>

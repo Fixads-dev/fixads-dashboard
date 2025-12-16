@@ -82,8 +82,10 @@ export interface AssetToRemove {
 export interface AssetToAdd {
   asset_type: AssetFieldType;
   text: string;
+  category: string; // Strategy category used (e.g., 'Scarcity (Specific)')
+  char_count: number;
   compliance_passed: boolean;
-  compliance_violations?: string[];
+  compliance_issues?: string[]; // Backend uses compliance_issues not compliance_violations
   language?: string; // ISO 639-1 code of the generated asset
 }
 
