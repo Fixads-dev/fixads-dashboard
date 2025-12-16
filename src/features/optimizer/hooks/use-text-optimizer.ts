@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { textOptimizerApi } from "../api/text-optimizer-api";
-import type { TextOptimizerApplyRequest, TextOptimizerRequest } from "../types";
+import type { TargetCpaRequest, TextOptimizerApplyRequest, TextOptimizerRequest } from "../types";
 
 interface AnalyzeParams {
   accountId: string;
@@ -15,6 +16,12 @@ interface ApplyParams {
   request: TextOptimizerApplyRequest;
 }
 
+interface SetTargetCpaParams {
+  accountId: string;
+  campaignId: string;
+  request: TargetCpaRequest;
+}
+
 export function useTextOptimizerAnalyze() {
   const queryClient = useQueryClient();
 
@@ -22,9 +29,9 @@ export function useTextOptimizerAnalyze() {
     mutationFn: ({ accountId, request }: AnalyzeParams) =>
       textOptimizerApi.analyze(accountId, request),
     onSuccess: (data) => {
-      queryClient.setQueryData(["text-optimizer-result", data.campaign_id], data);
-      toast.success("Analysis complete", {
-        description: `Found suggestions for ${data.asset_groups.length} asset groups`,
+      queryClient.setQueryData(["text-optimizer-result", data.optimization_run_id], data);
+      toast.success("Text analysis complete", {
+        description: `Found ${data.assets_to_remove.length} bad assets, generated ${data.assets_to_add.length} replacements`,
       });
     },
     onError: (error) => {
@@ -41,11 +48,14 @@ export function useApplyTextChanges() {
   return useMutation({
     mutationFn: ({ accountId, request }: ApplyParams) =>
       textOptimizerApi.applyChanges(accountId, request),
-    onSuccess: (data) => {
+    onSuccess: (data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["asset-groups"] });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.BAD_ASSET_HISTORY(accountId),
+      });
       toast.success("Changes applied", {
-        description: `Created ${data.assets_created} assets, paused ${data.assets_paused}`,
+        description: `Removed ${data.assets_removed}, created ${data.assets_created} assets`,
       });
     },
     onError: (error) => {
@@ -56,8 +66,40 @@ export function useApplyTextChanges() {
   });
 }
 
-export function useComplianceCheck() {
+export function useBadAssetHistory(accountId: string, campaignId?: string) {
+  return useQuery({
+    queryKey: QUERY_KEYS.BAD_ASSET_HISTORY(accountId),
+    queryFn: () => textOptimizerApi.getBadAssetHistory(accountId, campaignId),
+    enabled: !!accountId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useTargetCpa(accountId: string, campaignId: string) {
+  return useQuery({
+    queryKey: ["target-cpa", accountId, campaignId],
+    queryFn: () => textOptimizerApi.getTargetCpa(accountId, campaignId),
+    enabled: !!accountId && !!campaignId,
+  });
+}
+
+export function useSetTargetCpa() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: textOptimizerApi.checkCompliance,
+    mutationFn: ({ accountId, campaignId, request }: SetTargetCpaParams) =>
+      textOptimizerApi.setTargetCpa(accountId, campaignId, request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["target-cpa", variables.accountId, variables.campaignId],
+      });
+      const cpaDollars = data.target_cpa_micros / 1_000_000;
+      toast.success(`Target CPA set to ${data.currency_code} ${cpaDollars.toFixed(2)}`);
+    },
+    onError: (error) => {
+      toast.error("Failed to update target CPA", {
+        description: error.message,
+      });
+    },
   });
 }

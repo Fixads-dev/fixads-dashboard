@@ -1,12 +1,11 @@
 export {
   useApplySmartChanges,
-  useBadAssetHistory,
-  useSetTargetCpa,
   useSmartOptimizerAnalyze,
-  useTargetCpa,
 } from "./use-smart-optimizer";
 export {
   useApplyTextChanges,
-  useComplianceCheck,
+  useBadAssetHistory,
+  useSetTargetCpa,
+  useTargetCpa,
   useTextOptimizerAnalyze,
 } from "./use-text-optimizer";

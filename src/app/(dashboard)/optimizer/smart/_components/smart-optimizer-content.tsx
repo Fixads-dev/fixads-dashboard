@@ -1,19 +1,11 @@
 "use client";
 
-import { AlertCircle, Globe, Loader2, Play, Sparkles, Zap } from "lucide-react";
+import { AlertCircle, Globe, Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-
-const SUPPORTED_LANGUAGES = [
-  { code: "en", label: "English", native: "English" },
-  { code: "de", label: "German", native: "Deutsch" },
-  { code: "he", label: "Hebrew", native: "עברית" },
-  { code: "ru", label: "Russian", native: "Русский" },
-] as const;
-
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -34,12 +26,23 @@ import {
 import { EmptyState } from "@/shared/components";
 import { formatCurrency } from "@/shared/lib/format";
 
+const SUPPORTED_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "de", label: "German" },
+  { code: "es", label: "Spanish" },
+  { code: "fr", label: "French" },
+  { code: "he", label: "Hebrew" },
+  { code: "ru", label: "Russian" },
+] as const;
+
 export function SmartOptimizerContent() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
-  const [productDescription, setProductDescription] = useState<string>("");
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
+  const [finalUrl, setFinalUrl] = useState<string>("");
+  const [languageCode, setLanguageCode] = useState<string>("en");
+  const [freeformPrompt, setFreeformPrompt] = useState<string>("");
+  const [keywords, setKeywords] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<SmartOptimizerResponse | null>(null);
   const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
   const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
@@ -60,14 +63,12 @@ export function SmartOptimizerContent() {
   const { mutate: applyChanges, isPending: isApplying } = useApplySmartChanges();
 
   const handleAnalyze = () => {
-    if (
-      !selectedAccountId ||
-      !selectedCampaignId ||
-      !selectedAssetGroupId ||
-      !productDescription ||
-      selectedLanguages.length === 0
-    )
-      return;
+    if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId || !finalUrl) return;
+
+    const keywordList = keywords
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
 
     analyze(
       {
@@ -75,8 +76,10 @@ export function SmartOptimizerContent() {
         request: {
           campaign_id: selectedCampaignId,
           asset_group_id: selectedAssetGroupId,
-          product_description: productDescription,
-          languages: selectedLanguages,
+          final_url: finalUrl,
+          language_code: languageCode,
+          freeform_prompt: freeformPrompt || undefined,
+          keywords: keywordList.length > 0 ? keywordList : undefined,
         },
       },
       {
@@ -89,27 +92,11 @@ export function SmartOptimizerContent() {
     );
   };
 
-  const toggleLanguage = (code: string) => {
-    setSelectedLanguages((prev) => {
-      if (prev.includes(code)) {
-        // Don't allow removing the last language
-        if (prev.length === 1) return prev;
-        return prev.filter((c) => c !== code);
-      }
-      return [...prev, code];
-    });
-  };
-
-  const getLanguageLabel = (code: string) => {
-    const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
-    return lang ? lang.native : code.toUpperCase();
-  };
-
   const handleApply = () => {
     if (!selectedAccountId || !analysisResult) return;
     if (selectedToRemove.size === 0 && selectedToAdd.size === 0) return;
 
-    const assetsToAdd = analysisResult.assets_to_add
+    const assetsToAdd = analysisResult.generated_assets
       .filter((_, i) => selectedToAdd.has(i))
       .filter((a) => a.compliance_passed);
 
@@ -170,8 +157,8 @@ export function SmartOptimizerContent() {
   };
 
   const selectAllCompliantSuggestions = () => {
-    if (analysisResult?.assets_to_add) {
-      const compliantIndices = analysisResult.assets_to_add
+    if (analysisResult?.generated_assets) {
+      const compliantIndices = analysisResult.generated_assets
         .map((a, i) => (a.compliance_passed ? i : -1))
         .filter((i) => i !== -1);
       setSelectedToAdd(new Set(compliantIndices));
@@ -182,12 +169,21 @@ export function SmartOptimizerContent() {
   const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
     acc.descriptive_name ?? acc.customer_id;
 
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const isReady =
     selectedAccountId &&
     selectedCampaignId &&
     selectedAssetGroupId &&
-    productDescription.trim() &&
-    selectedLanguages.length > 0;
+    finalUrl.trim() &&
+    isValidUrl(finalUrl);
   const hasResults = analysisResult !== null;
   const totalChanges = selectedToRemove.size + selectedToAdd.size;
 
@@ -195,17 +191,19 @@ export function SmartOptimizerContent() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Smart Optimizer</h1>
-        <p className="text-muted-foreground">Automatically detect and fix underperforming assets</p>
+        <p className="text-muted-foreground">
+          Generate optimized assets using Google Ads AI from your landing page
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-yellow-500" />
-            Select Campaign
+            <Wand2 className="h-5 w-5 text-purple-500" />
+            Generate Assets from URL
           </CardTitle>
           <CardDescription>
-            Analyze your assets for ZOMBIE, MONEY_WASTER, CLICKBAIT, and TREND_DROPPER patterns
+            Enter your landing page URL to generate AI-powered headlines and descriptions
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -308,48 +306,82 @@ export function SmartOptimizerContent() {
             </div>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label htmlFor="final-url" className="text-sm font-medium flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                Landing Page URL
+              </label>
+              <Input
+                id="final-url"
+                type="url"
+                placeholder="https://example.com/landing-page"
+                value={finalUrl}
+                onChange={(e) => setFinalUrl(e.target.value)}
+                className="mt-1.5"
+                disabled={!selectedAssetGroupId}
+              />
+              {finalUrl && !isValidUrl(finalUrl) && (
+                <p className="text-xs text-destructive mt-1">Please enter a valid URL</p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="language-code"
+                className="text-sm font-medium flex items-center gap-2"
+              >
+                <Globe className="h-4 w-4" />
+                Output Language
+              </label>
+              <Select
+                value={languageCode}
+                onValueChange={setLanguageCode}
+                disabled={!selectedAssetGroupId}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div>
-            <label htmlFor="product-description" className="text-sm font-medium">
-              Product Description
+            <label htmlFor="freeform-prompt" className="text-sm font-medium">
+              Custom Instructions (Optional)
             </label>
             <Textarea
-              id="product-description"
-              placeholder="Describe your product or service for AI-powered suggestions..."
-              value={productDescription}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setProductDescription(e.target.value)
-              }
+              id="freeform-prompt"
+              placeholder="Add custom instructions for the AI, e.g., 'Focus on eco-friendly messaging' or 'Highlight free shipping'"
+              value={freeformPrompt}
+              onChange={(e) => setFreeformPrompt(e.target.value)}
               className="mt-1.5"
-              rows={3}
+              rows={2}
               disabled={!selectedAssetGroupId}
             />
           </div>
 
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Output Languages</span>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <div key={lang.code} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`lang-${lang.code}`}
-                    checked={selectedLanguages.includes(lang.code)}
-                    onCheckedChange={() => toggleLanguage(lang.code)}
-                    disabled={!selectedAssetGroupId}
-                  />
-                  <Label
-                    htmlFor={`lang-${lang.code}`}
-                    className={`text-sm ${selectedAssetGroupId ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
-                  >
-                    {lang.native}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              Select one or more languages. Assets will be generated for each selected language.
+            <label htmlFor="keywords" className="text-sm font-medium">
+              Keywords to Include (Optional)
+            </label>
+            <Input
+              id="keywords"
+              placeholder="Enter keywords separated by commas, e.g., free shipping, 24/7 support, eco-friendly"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              className="mt-1.5"
+              disabled={!selectedAssetGroupId}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              These keywords will be incorporated into the generated assets
             </p>
           </div>
 
@@ -357,12 +389,12 @@ export function SmartOptimizerContent() {
             {isAnalyzing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
+                Generating Assets...
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Run Smart Analysis
+                Generate Assets
               </>
             )}
           </Button>
@@ -374,13 +406,13 @@ export function SmartOptimizerContent() {
           {/* Summary Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Analysis Summary</CardTitle>
+              <CardTitle>Generation Summary</CardTitle>
               <CardDescription>
                 Campaign: {analysisResult.campaign_name} / {analysisResult.asset_group_name}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Total Analyzed</p>
                   <p className="text-lg font-semibold">
@@ -388,14 +420,22 @@ export function SmartOptimizerContent() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Bad Assets</p>
-                  <p className="text-lg font-semibold text-destructive">
-                    {analysisResult.assets_to_remove.length}
+                  <p className="text-muted-foreground">Headlines</p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    {analysisResult.summary.generated_headlines}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Suggestions</p>
-                  <p className="text-lg font-semibold">{analysisResult.assets_to_add.length}</p>
+                  <p className="text-muted-foreground">Descriptions</p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    {analysisResult.summary.generated_descriptions}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Bad Assets</p>
+                  <p className="text-lg font-semibold text-destructive">
+                    {analysisResult.summary.bad_assets_found}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Compliant</p>
@@ -407,6 +447,67 @@ export function SmartOptimizerContent() {
             </CardContent>
           </Card>
 
+          {/* Generated Assets */}
+          {analysisResult.generated_assets.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-blue-600">
+                      Generated Assets ({analysisResult.generated_assets.length})
+                    </CardTitle>
+                    <CardDescription>
+                      AI-generated headlines and descriptions from your landing page
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllCompliantSuggestions}
+                    disabled={isApplying}
+                  >
+                    Select All Compliant
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {analysisResult.generated_assets.map((asset, index) => (
+                  <div
+                    key={`${asset.asset_type}-${index}`}
+                    className="flex items-start gap-3 rounded-lg border p-3"
+                  >
+                    <Checkbox
+                      checked={selectedToAdd.has(index)}
+                      onCheckedChange={() => toggleAdd(index)}
+                      disabled={!asset.compliance_passed || isApplying}
+                    />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase">
+                          {asset.asset_type}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {asset.char_count} chars
+                        </span>
+                        {asset.compliance_passed ? (
+                          <span className="text-xs text-green-600">Compliant</span>
+                        ) : (
+                          <span className="text-xs text-destructive">Non-compliant</span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium">{asset.text}</p>
+                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
+                        <p className="text-xs text-destructive">
+                          Issues: {asset.compliance_issues.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Bad Assets to Remove */}
           {analysisResult.assets_to_remove.length > 0 && (
             <Card>
@@ -416,7 +517,7 @@ export function SmartOptimizerContent() {
                     <CardTitle className="text-destructive">
                       Bad Assets ({analysisResult.assets_to_remove.length})
                     </CardTitle>
-                    <CardDescription>Select assets to remove</CardDescription>
+                    <CardDescription>Select underperforming assets to remove</CardDescription>
                   </div>
                   <Button
                     variant="outline"
@@ -464,67 +565,6 @@ export function SmartOptimizerContent() {
             </Card>
           )}
 
-          {/* Suggested Assets to Add */}
-          {analysisResult.assets_to_add.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>
-                      Suggested Replacements ({analysisResult.assets_to_add.length})
-                    </CardTitle>
-                    <CardDescription>Select assets to add</CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllCompliantSuggestions}
-                    disabled={isApplying}
-                  >
-                    Select All Compliant
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analysisResult.assets_to_add.map((asset, index) => (
-                  <div
-                    key={`${asset.asset_type}-${index}`}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedToAdd.has(index)}
-                      onCheckedChange={() => toggleAdd(index)}
-                      disabled={!asset.compliance_passed || isApplying}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase">
-                          {asset.asset_type}
-                        </span>
-                        {asset.language && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                            {getLanguageLabel(asset.language)}
-                          </span>
-                        )}
-                        {asset.compliance_passed ? (
-                          <span className="text-xs text-green-600">Compliant</span>
-                        ) : (
-                          <span className="text-xs text-destructive">Non-compliant</span>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium">{asset.text}</p>
-                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
-                        <p className="text-xs text-destructive">
-                          Issues: {asset.compliance_issues.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Apply Button */}
           <div className="flex justify-end">
             <Button onClick={handleApply} disabled={totalChanges === 0 || isApplying}>
@@ -540,12 +580,12 @@ export function SmartOptimizerContent() {
       )}
 
       {hasResults &&
-        analysisResult.assets_to_remove.length === 0 &&
-        analysisResult.assets_to_add.length === 0 && (
+        analysisResult.generated_assets.length === 0 &&
+        analysisResult.assets_to_remove.length === 0 && (
           <EmptyState
             icon={Sparkles}
-            title="No bad assets found"
-            description="Your assets are performing well! No underperforming assets detected."
+            title="No assets generated"
+            description="Unable to generate assets from the provided URL. Try a different landing page or add custom instructions."
           />
         )}
     </div>

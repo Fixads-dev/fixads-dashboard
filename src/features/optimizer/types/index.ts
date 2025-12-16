@@ -1,61 +1,8 @@
-import type { Asset, AssetFieldType, SuggestedAsset } from "@/features/campaigns";
+import type { AssetFieldType } from "@/features/campaigns";
 
 /**
- * Text Optimizer Types - matches API (snake_case)
- */
-export interface TextOptimizerRequest {
-  campaign_id: string;
-  campaign_description: string;
-  asset_group_descriptions?: Record<string, string>;
-}
-
-/**
- * Asset group result from text optimizer analysis
- */
-export interface AnalyzedAssetGroup {
-  asset_group_id: string;
-  asset_group_name: string;
-  existing_assets: Asset[];
-  suggested_assets: SuggestedAsset[];
-  issues: string[];
-}
-
-export interface TextOptimizerResponse {
-  campaign_id: string;
-  campaign_name: string;
-  description_text: string;
-  asset_groups: AnalyzedAssetGroup[];
-}
-
-/**
- * Text Optimizer Apply Request
- */
-export interface TextOptimizerApplyRequest {
-  campaign_id: string;
-  asset_groups: Array<{
-    asset_group_id: string;
-    asset_group_name?: string;
-    suggested_assets: Array<{
-      field_type: AssetFieldType;
-      text: string;
-      reason?: string;
-    }>;
-  }>;
-  assets_to_pause?: Array<{
-    asset_group_asset_resource_name: string;
-    type: string;
-    text: string;
-  }>;
-}
-
-export interface TextOptimizerApplyResponse {
-  assets_created: number;
-  assets_paused: number;
-  errors: string[];
-}
-
-/**
- * Smart Optimizer Types (MVP v2.1)
+ * Text Optimizer Types (Bad Asset Detection + AI Replacement)
+ * Renamed from Smart Optimizer
  */
 export type BadAssetClassification = "ZOMBIE" | "MONEY_WASTER" | "CLICKBAIT" | "TREND_DROPPER";
 
@@ -89,7 +36,7 @@ export interface AssetToAdd {
   language?: string; // ISO 639-1 code of the generated asset
 }
 
-export interface SmartOptimizerRequest {
+export interface TextOptimizerRequest {
   campaign_id: string;
   asset_group_id: string;
   product_description: string;
@@ -100,7 +47,7 @@ export interface SmartOptimizerRequest {
   languages?: string[]; // ISO 639-1 codes: en, de, he, ru
 }
 
-export interface SmartOptimizerResponse {
+export interface TextOptimizerResponse {
   optimization_run_id: string;
   campaign_id: string;
   campaign_name: string;
@@ -120,7 +67,7 @@ export interface SmartOptimizerResponse {
   };
 }
 
-export interface SmartOptimizerApplyRequest {
+export interface TextOptimizerApplyRequest {
   optimization_run_id: string;
   campaign_id: string;
   asset_group_id: string;
@@ -128,7 +75,8 @@ export interface SmartOptimizerApplyRequest {
   assets_to_add: AssetToAdd[];
 }
 
-export interface SmartOptimizerApplyResponse {
+export interface TextOptimizerApplyResponse {
+  optimization_run_id: string;
   assets_removed: number;
   assets_created: number;
   bad_assets_logged: number;
@@ -136,16 +84,59 @@ export interface SmartOptimizerApplyResponse {
 }
 
 /**
- * Compliance Check Types
+ * NEW Smart Optimizer Types (Google Ads API v22 AssetGenerationService)
+ * Uses GenerateText method to generate assets from landing page URL
  */
-export interface ComplianceCheckRequest {
-  text: string;
-  asset_type: AssetFieldType;
+export interface SmartOptimizerRequest {
+  campaign_id: string;
+  asset_group_id: string;
+  final_url: string; // Landing page URL for AI to crawl
+  language_code: string; // ISO 639-1: "en", "de", etc.
+  freeform_prompt?: string; // Optional custom instructions for AI
+  keywords?: string[]; // Optional keywords to incorporate
+  max_replacements?: number; // Max bad assets to flag for removal
 }
 
-export interface ComplianceCheckResponse {
-  is_compliant: boolean;
-  violations: string[];
+export interface GeneratedTextAsset {
+  asset_type: "HEADLINE" | "DESCRIPTION";
+  text: string;
+  char_count: number;
+  compliance_passed: boolean;
+  compliance_issues?: string[];
+}
+
+export interface SmartOptimizerResponse {
+  optimization_run_id: string;
+  campaign_id: string;
+  campaign_name: string;
+  asset_group_id: string;
+  asset_group_name: string;
+  generated_assets: GeneratedTextAsset[]; // From AssetGenerationService.GenerateText
+  assets_to_remove: AssetToRemove[]; // Bad asset detection (reused logic)
+  summary: {
+    total_assets_analyzed: number;
+    generated_headlines: number;
+    generated_descriptions: number;
+    bad_assets_found: number;
+    compliance_passed: number;
+    compliance_failed: number;
+  };
+}
+
+export interface SmartOptimizerApplyRequest {
+  optimization_run_id: string;
+  campaign_id: string;
+  asset_group_id: string;
+  asset_ids_to_remove: string[];
+  assets_to_add: GeneratedTextAsset[];
+}
+
+export interface SmartOptimizerApplyResponse {
+  optimization_run_id: string;
+  assets_removed: number;
+  assets_created: number;
+  bad_assets_logged: number;
+  errors: string[];
 }
 
 /**
@@ -157,9 +148,13 @@ export interface TargetCpaRequest {
 }
 
 export interface TargetCpaResponse {
+  id: string;
+  account_id: string;
   campaign_id: string;
   target_cpa_micros: number;
   currency_code: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -183,10 +178,6 @@ export interface BadAssetHistoryResponse {
   items: BadAssetHistoryItem[];
   total: number;
 }
-
-// Legacy types for backwards compatibility
-export type ApplyChangesRequest = TextOptimizerApplyRequest | SmartOptimizerApplyRequest;
-export type ApplyChangesResponse = TextOptimizerApplyResponse | SmartOptimizerApplyResponse;
 
 /**
  * Legacy BadAsset type for BadAssetCard component

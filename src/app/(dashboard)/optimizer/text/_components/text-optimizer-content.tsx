@@ -1,11 +1,19 @@
 "use client";
 
-import { Bot, Check, Loader2, Pencil, Play, Sparkles, Type, X } from "lucide-react";
+import { AlertCircle, Globe, Loader2, Play, Sparkles, Type } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const SUPPORTED_LANGUAGES = [
+  { code: "en", label: "English", native: "English" },
+  { code: "de", label: "German", native: "Deutsch" },
+  { code: "he", label: "Hebrew", native: "עברית" },
+  { code: "ru", label: "Russian", native: "Русский" },
+] as const;
+
 import {
   Select,
   SelectContent,
@@ -15,230 +23,334 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
-import { useCampaigns } from "@/features/campaigns";
+import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import {
-  type AnalyzedAssetGroup,
+  type AssetToRemove,
+  BadAssetChip,
   type TextOptimizerResponse,
   useApplyTextChanges,
   useTextOptimizerAnalyze,
 } from "@/features/optimizer";
 import { EmptyState } from "@/shared/components";
+import { formatCurrency } from "@/shared/lib/format";
 
 export function TextOptimizerContent() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [campaignDescription, setCampaignDescription] = useState<string>("");
+  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
+  const [productDescription, setProductDescription] = useState<string>("");
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
   const [analysisResult, setAnalysisResult] = useState<TextOptimizerResponse | null>(null);
-  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
-  // Editing state: key is "suggestion-{groupId}-{index}" or "existing-{groupId}-{index}"
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editedText, setEditedText] = useState<string>("");
-  // Track edited suggestions: key -> new text
-  const [editedSuggestions, setEditedSuggestions] = useState<Map<string, string>>(new Map());
+  const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
+  const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
 
-  const { data: accounts } = useAccounts();
-  const { data: campaigns } = useCampaigns(
-    selectedAccountId ? { account_id: selectedAccountId } : undefined,
-  );
+  const { data: accounts, isPending: isLoadingAccounts, isError: isAccountsError } = useAccounts();
+  const {
+    data: campaigns,
+    isPending: isLoadingCampaigns,
+    isError: isCampaignsError,
+  } = useCampaigns(selectedAccountId ? { account_id: selectedAccountId } : undefined);
+  const {
+    data: assetGroups,
+    isPending: isLoadingAssetGroups,
+    isError: isAssetGroupsError,
+  } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
   const { mutate: analyze, isPending: isAnalyzing } = useTextOptimizerAnalyze();
   const { mutate: applyChanges, isPending: isApplying } = useApplyTextChanges();
 
   const handleAnalyze = () => {
-    if (!selectedAccountId || !selectedCampaignId || !campaignDescription) return;
+    if (
+      !selectedAccountId ||
+      !selectedCampaignId ||
+      !selectedAssetGroupId ||
+      !productDescription ||
+      selectedLanguages.length === 0
+    )
+      return;
 
     analyze(
       {
         accountId: selectedAccountId,
         request: {
           campaign_id: selectedCampaignId,
-          campaign_description: campaignDescription,
+          asset_group_id: selectedAssetGroupId,
+          product_description: productDescription,
+          languages: selectedLanguages,
         },
       },
       {
         onSuccess: (data) => {
           setAnalysisResult(data);
-          setSelectedAssets(new Set());
+          setSelectedToRemove(new Set());
+          setSelectedToAdd(new Set());
         },
       },
     );
   };
 
+  const toggleLanguage = (code: string) => {
+    setSelectedLanguages((prev) => {
+      if (prev.includes(code)) {
+        // Don't allow removing the last language
+        if (prev.length === 1) return prev;
+        return prev.filter((c) => c !== code);
+      }
+      return [...prev, code];
+    });
+  };
+
+  const getLanguageLabel = (code: string) => {
+    const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
+    return lang ? lang.native : code.toUpperCase();
+  };
+
   const handleApply = () => {
-    if (!selectedAccountId || !analysisResult || selectedAssets.size === 0) return;
+    if (!selectedAccountId || !analysisResult) return;
+    if (selectedToRemove.size === 0 && selectedToAdd.size === 0) return;
 
-    // Build apply request from selected suggestions
-    const assetGroupsToApply = analysisResult.asset_groups
-      .filter((ag) =>
-        ag.suggested_assets.some((sa) =>
-          selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`),
-        ),
-      )
-      .map((ag) => ({
-        asset_group_id: ag.asset_group_id,
-        asset_group_name: ag.asset_group_name,
-        suggested_assets: ag.suggested_assets
-          .filter((sa) => selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`))
-          .map((sa) => ({
-            field_type: sa.field_type,
-            text: sa.text,
-            reason: sa.reason,
-          })),
-      }));
-
-    if (assetGroupsToApply.length === 0) return;
+    const assetsToAdd = analysisResult.assets_to_add
+      .filter((_, i) => selectedToAdd.has(i))
+      .filter((a) => a.compliance_passed);
 
     applyChanges(
       {
         accountId: selectedAccountId,
         request: {
+          optimization_run_id: analysisResult.optimization_run_id,
           campaign_id: analysisResult.campaign_id,
-          asset_groups: assetGroupsToApply,
+          asset_group_id: analysisResult.asset_group_id,
+          asset_ids_to_remove: Array.from(selectedToRemove),
+          assets_to_add: assetsToAdd,
         },
       },
       {
         onSuccess: () => {
           setAnalysisResult(null);
-          setSelectedAssets(new Set());
+          setSelectedToRemove(new Set());
+          setSelectedToAdd(new Set());
         },
       },
     );
   };
 
-  const toggleAsset = (assetKey: string) => {
-    setSelectedAssets((prev) => {
+  // Get the identifier used for pausing assets (prefer asset_group_asset_resource_name)
+  const getRemovalId = (asset: AssetToRemove): string =>
+    asset.asset_group_asset_resource_name || asset.asset_id;
+
+  const toggleRemove = (asset: AssetToRemove) => {
+    const id = getRemovalId(asset);
+    setSelectedToRemove((prev) => {
       const next = new Set(prev);
-      if (next.has(assetKey)) {
-        next.delete(assetKey);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(assetKey);
+        next.add(id);
       }
       return next;
     });
   };
 
-  const selectAllInGroup = (group: AnalyzedAssetGroup) => {
-    setSelectedAssets((prev) => {
+  const toggleAdd = (index: number) => {
+    setSelectedToAdd((prev) => {
       const next = new Set(prev);
-      for (const sa of group.suggested_assets) {
-        next.add(`${group.asset_group_id}-${sa.field_type}-${sa.text}`);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
       }
       return next;
     });
   };
 
-  const selectAll = () => {
-    if (!analysisResult) return;
-    const allKeys = new Set<string>();
-    for (const ag of analysisResult.asset_groups) {
-      for (const sa of ag.suggested_assets) {
-        allKeys.add(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`);
-      }
+  const selectAllBadAssets = () => {
+    if (analysisResult?.assets_to_remove) {
+      setSelectedToRemove(new Set(analysisResult.assets_to_remove.map(getRemovalId)));
     }
-    setSelectedAssets(allKeys);
+  };
+
+  const selectAllCompliantSuggestions = () => {
+    if (analysisResult?.assets_to_add) {
+      const compliantIndices = analysisResult.assets_to_add
+        .map((a, i) => (a.compliance_passed ? i : -1))
+        .filter((i) => i !== -1);
+      setSelectedToAdd(new Set(compliantIndices));
+    }
   };
 
   // Helper to get display name for account
   const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
     acc.descriptive_name ?? acc.customer_id;
 
-  // Edit functions
-  const startEdit = (key: string, currentText: string) => {
-    setEditingKey(key);
-    setEditedText(currentText);
-  };
-
-  const cancelEdit = () => {
-    setEditingKey(null);
-    setEditedText("");
-  };
-
-  const saveEdit = (key: string) => {
-    if (editedText.trim()) {
-      setEditedSuggestions((prev) => {
-        const next = new Map(prev);
-        next.set(key, editedText.trim());
-        return next;
-      });
-    }
-    setEditingKey(null);
-    setEditedText("");
-  };
-
-  // Get the display text for an asset (original or edited)
-  const getDisplayText = (key: string, originalText: string) => {
-    return editedSuggestions.get(key) ?? originalText;
-  };
-
-  // Check if an asset has been edited
-  const isEdited = (key: string) => editedSuggestions.has(key);
-
-  const isReady = selectedAccountId && selectedCampaignId && campaignDescription.trim();
-  const totalSuggestions =
-    analysisResult?.asset_groups.reduce((sum, ag) => sum + ag.suggested_assets.length, 0) ?? 0;
+  const isReady =
+    selectedAccountId &&
+    selectedCampaignId &&
+    selectedAssetGroupId &&
+    productDescription.trim() &&
+    selectedLanguages.length > 0;
+  const hasResults = analysisResult !== null;
+  const totalChanges = selectedToRemove.size + selectedToAdd.size;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Text Optimizer</h1>
-        <p className="text-muted-foreground">Improve your ad copy with AI-powered suggestions</p>
+        <p className="text-muted-foreground">Detect and fix underperforming assets</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Type className="h-5 w-5" />
+            <Type className="h-5 w-5 text-blue-500" />
             Select Campaign
           </CardTitle>
-          <CardDescription>Choose an account and campaign to analyze</CardDescription>
+          <CardDescription>
+            Analyze your assets for ZOMBIE, MONEY_WASTER, CLICKBAIT, and TREND_DROPPER patterns
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {getAccountDisplayName(account)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedCampaignId}
-              onValueChange={setSelectedCampaignId}
-              disabled={!selectedAccountId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns
-                  ?.filter((campaign) => campaign.campaign_id)
-                  .map((campaign) => (
-                    <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                      {campaign.campaign_name || campaign.campaign_id}
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <Select
+                value={selectedAccountId}
+                onValueChange={setSelectedAccountId}
+                disabled={isLoadingAccounts}
+              >
+                <SelectTrigger>
+                  {isLoadingAccounts ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading accounts...
+                    </span>
+                  ) : isAccountsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select account" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {getAccountDisplayName(account)}
                     </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Select
+                value={selectedCampaignId}
+                onValueChange={setSelectedCampaignId}
+                disabled={!selectedAccountId || isLoadingCampaigns}
+              >
+                <SelectTrigger>
+                  {selectedAccountId && isLoadingCampaigns ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading campaigns...
+                    </span>
+                  ) : selectedAccountId && isCampaignsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select campaign" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {campaigns
+                    ?.filter((campaign) => campaign.campaign_id)
+                    .map((campaign) => (
+                      <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
+                        {campaign.campaign_name || campaign.campaign_id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Select
+                value={selectedAssetGroupId}
+                onValueChange={setSelectedAssetGroupId}
+                disabled={!selectedCampaignId || isLoadingAssetGroups}
+              >
+                <SelectTrigger>
+                  {selectedCampaignId && isLoadingAssetGroups ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading asset groups...
+                    </span>
+                  ) : selectedCampaignId && isAssetGroupsError ? (
+                    <span className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Error loading
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Select asset group" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {assetGroups
+                    ?.filter((group) => group.asset_group_id)
+                    .map((group) => (
+                      <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
+                        {group.asset_group_name || group.asset_group_id}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
-            <label htmlFor="campaign-description" className="text-sm font-medium">
-              Campaign Description
+            <label htmlFor="product-description" className="text-sm font-medium">
+              Product Description
             </label>
             <Textarea
-              id="campaign-description"
-              placeholder="Describe your product or service to help generate better suggestions..."
-              value={campaignDescription}
-              onChange={(e) => setCampaignDescription(e.target.value)}
+              id="product-description"
+              placeholder="Describe your product or service for AI-powered suggestions..."
+              value={productDescription}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setProductDescription(e.target.value)
+              }
               className="mt-1.5"
               rows={3}
+              disabled={!selectedAssetGroupId}
             />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Output Languages</span>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <div key={lang.code} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`lang-${lang.code}`}
+                    checked={selectedLanguages.includes(lang.code)}
+                    onCheckedChange={() => toggleLanguage(lang.code)}
+                    disabled={!selectedAssetGroupId}
+                  />
+                  <Label
+                    htmlFor={`lang-${lang.code}`}
+                    className={`text-sm ${selectedAssetGroupId ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+                  >
+                    {lang.native}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Select one or more languages. Assets will be generated for each selected language.
+            </p>
           </div>
 
           <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing}>
@@ -250,242 +362,192 @@ export function TextOptimizerContent() {
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Analyze Assets
+                Run Text Analysis
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {analysisResult && totalSuggestions > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Suggestions for {analysisResult.campaign_name}
-            </h2>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={selectAll}>
-                Select All ({totalSuggestions})
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleApply}
-                disabled={selectedAssets.size === 0 || isApplying}
-              >
-                {isApplying ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Apply ({selectedAssets.size})
-              </Button>
-            </div>
-          </div>
+      {hasResults && (
+        <div className="space-y-6">
+          {/* Summary Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Analysis Summary</CardTitle>
+              <CardDescription>
+                Campaign: {analysisResult.campaign_name} / {analysisResult.asset_group_name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Total Analyzed</p>
+                  <p className="text-lg font-semibold">
+                    {analysisResult.summary.total_assets_analyzed}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Bad Assets</p>
+                  <p className="text-lg font-semibold text-destructive">
+                    {analysisResult.assets_to_remove.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Suggestions</p>
+                  <p className="text-lg font-semibold">{analysisResult.assets_to_add.length}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Compliant</p>
+                  <p className="text-lg font-semibold text-green-600">
+                    {analysisResult.summary.compliance_passed}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {analysisResult.asset_groups.map((group) => (
-            <Card key={group.asset_group_id}>
-              <CardHeader className="pb-3">
+          {/* Bad Assets to Remove */}
+          {analysisResult.assets_to_remove.length > 0 && (
+            <Card>
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{group.asset_group_name}</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => selectAllInGroup(group)}>
+                  <div>
+                    <CardTitle className="text-destructive">
+                      Bad Assets ({analysisResult.assets_to_remove.length})
+                    </CardTitle>
+                    <CardDescription>Select assets to remove</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllBadAssets}
+                    disabled={isApplying}
+                  >
                     Select All
                   </Button>
                 </div>
-                {group.issues.length > 0 && (
-                  <CardDescription className="text-amber-600">
-                    Issues: {group.issues.join(", ")}
-                  </CardDescription>
-                )}
               </CardHeader>
               <CardContent className="space-y-3">
-                {group.suggested_assets.map((suggestion, idx) => {
-                  const suggestionKey = `suggestion-${group.asset_group_id}-${idx}`;
-                  const selectKey = `${group.asset_group_id}-${suggestion.field_type}-${getDisplayText(suggestionKey, suggestion.text)}`;
-                  const isEditingThis = editingKey === suggestionKey;
-                  const wasEdited = isEdited(suggestionKey);
-                  const displayText = getDisplayText(suggestionKey, suggestion.text);
-
-                  return (
-                    <div
-                      key={suggestionKey}
-                      className="flex items-start gap-3 rounded-lg border p-3"
-                    >
-                      <Checkbox
-                        checked={selectedAssets.has(selectKey)}
-                        onCheckedChange={() => toggleAsset(selectKey)}
-                        disabled={isEditingThis}
-                      />
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-muted-foreground uppercase">
-                            {suggestion.field_type}
+                {analysisResult.assets_to_remove.map((asset: AssetToRemove) => (
+                  <div
+                    key={getRemovalId(asset)}
+                    className="flex items-start gap-3 rounded-lg border p-3"
+                  >
+                    <Checkbox
+                      checked={selectedToRemove.has(getRemovalId(asset))}
+                      onCheckedChange={() => toggleRemove(asset)}
+                      disabled={isApplying}
+                    />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <BadAssetChip classification={asset.reason_code} />
+                        <span className="text-xs text-muted-foreground">
+                          Score: {asset.severity_score}
+                        </span>
+                      </div>
+                      <p className="text-sm">{asset.text}</p>
+                      {asset.metrics && (
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>Impressions: {asset.metrics.impressions ?? 0}</span>
+                          <span>Clicks: {asset.metrics.clicks ?? 0}</span>
+                          <span>
+                            Cost: {formatCurrency((asset.metrics.cost_micros ?? 0) / 1_000_000)}
                           </span>
-                          {/* AI Generated indicator */}
-                          {!wasEdited && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
-                              <Bot className="h-3 w-3" />
-                              AI Generated
-                            </span>
-                          )}
-                          {wasEdited && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                              <Pencil className="h-3 w-3" />
-                              Edited
-                            </span>
-                          )}
+                          <span>Conversions: {asset.metrics.conversions ?? 0}</span>
                         </div>
-
-                        {isEditingThis ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editedText}
-                              onChange={(e) => setEditedText(e.target.value)}
-                              className="text-sm"
-                              autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => saveEdit(suggestionKey)}
-                              >
-                                <Check className="mr-1 h-3 w-3" />
-                                Save
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={cancelEdit}>
-                                <X className="mr-1 h-3 w-3" />
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium">{displayText}</p>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 shrink-0"
-                              onClick={() => startEdit(suggestionKey, displayText)}
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-
-                        {suggestion.reason && !isEditingThis && (
-                          <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
-
-                {group.suggested_assets.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No suggestions for this asset group
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {analysisResult && totalSuggestions === 0 && (
-        <div className="space-y-4">
-          <EmptyState
-            icon={Sparkles}
-            title="No suggestions found"
-            description="Your ad copy looks great! No improvements needed at this time."
-          />
-
-          {/* Show existing assets even when no suggestions */}
-          {analysisResult.asset_groups.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Current Assets</CardTitle>
-                <CardDescription>
-                  Found {analysisResult.asset_groups.length} asset group(s) with existing text
-                  assets
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysisResult.asset_groups.map((group) => (
-                  <div key={group.asset_group_id} className="space-y-2">
-                    <p className="text-sm font-medium">{group.asset_group_name}</p>
-                    {group.existing_assets.length > 0 ? (
-                      <div className="space-y-1">
-                        {group.existing_assets.map((asset, idx) => {
-                          const assetKey = `existing-${group.asset_group_id}-${idx}`;
-                          const isEditingThis = editingKey === assetKey;
-                          const wasEdited = isEdited(assetKey);
-                          const displayText = getDisplayText(assetKey, asset.text);
-
-                          return (
-                            <div
-                              key={`${asset.resource_name}-${idx}`}
-                              className="flex items-start gap-2 rounded border p-2 text-sm"
-                            >
-                              {isEditingThis ? (
-                                <div className="flex-1 space-y-2">
-                                  <Input
-                                    value={editedText}
-                                    onChange={(e) => setEditedText(e.target.value)}
-                                    className="text-sm"
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      onClick={() => saveEdit(assetKey)}
-                                    >
-                                      <Check className="mr-1 h-3 w-3" />
-                                      Save
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={cancelEdit}>
-                                      <X className="mr-1 h-3 w-3" />
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  <span className="flex-1">{displayText}</span>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    {wasEdited && (
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                                        <Pencil className="h-2.5 w-2.5" />
-                                      </span>
-                                    )}
-                                    <span className="text-xs text-muted-foreground uppercase">
-                                      {asset.type}
-                                    </span>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => startEdit(assetKey, displayText)}
-                                    >
-                                      <Pencil className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No text assets in this group</p>
-                    )}
                   </div>
                 ))}
               </CardContent>
             </Card>
           )}
+
+          {/* Suggested Assets to Add */}
+          {analysisResult.assets_to_add.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>
+                      Suggested Replacements ({analysisResult.assets_to_add.length})
+                    </CardTitle>
+                    <CardDescription>Select assets to add</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllCompliantSuggestions}
+                    disabled={isApplying}
+                  >
+                    Select All Compliant
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {analysisResult.assets_to_add.map((asset, index) => (
+                  <div
+                    key={`${asset.asset_type}-${index}`}
+                    className="flex items-start gap-3 rounded-lg border p-3"
+                  >
+                    <Checkbox
+                      checked={selectedToAdd.has(index)}
+                      onCheckedChange={() => toggleAdd(index)}
+                      disabled={!asset.compliance_passed || isApplying}
+                    />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase">
+                          {asset.asset_type}
+                        </span>
+                        {asset.language && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                            {getLanguageLabel(asset.language)}
+                          </span>
+                        )}
+                        {asset.compliance_passed ? (
+                          <span className="text-xs text-green-600">Compliant</span>
+                        ) : (
+                          <span className="text-xs text-destructive">Non-compliant</span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium">{asset.text}</p>
+                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
+                        <p className="text-xs text-destructive">
+                          Issues: {asset.compliance_issues.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Apply Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleApply} disabled={totalChanges === 0 || isApplying}>
+              {isApplying ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Apply Changes ({totalChanges})
+            </Button>
+          </div>
         </div>
       )}
+
+      {hasResults &&
+        analysisResult.assets_to_remove.length === 0 &&
+        analysisResult.assets_to_add.length === 0 && (
+          <EmptyState
+            icon={Sparkles}
+            title="No bad assets found"
+            description="Your assets are performing well! No underperforming assets detected."
+          />
+        )}
     </div>
   );
 }

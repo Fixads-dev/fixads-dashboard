@@ -3,7 +3,7 @@ import { TextOptimizerContent } from "./_components/text-optimizer-content";
 
 export const metadata: Metadata = {
   title: "Text Optimizer",
-  description: "Improve your ad copy with AI-powered suggestions",
+  description: "Detect and fix underperforming assets with AI-powered suggestions",
 };
 
 export default function TextOptimizerPage() {
