@@ -294,11 +294,50 @@ export function TextOptimizerContent() {
       )}
 
       {analysisResult && totalSuggestions === 0 && (
-        <EmptyState
-          icon={Sparkles}
-          title="No suggestions found"
-          description="Your ad copy looks great! No improvements needed at this time."
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={Sparkles}
+            title="No suggestions found"
+            description="Your ad copy looks great! No improvements needed at this time."
+          />
+
+          {/* Show existing assets even when no suggestions */}
+          {analysisResult.asset_groups.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Current Assets</CardTitle>
+                <CardDescription>
+                  Found {analysisResult.asset_groups.length} asset group(s) with existing text
+                  assets
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {analysisResult.asset_groups.map((group) => (
+                  <div key={group.asset_group_id} className="space-y-2">
+                    <p className="text-sm font-medium">{group.asset_group_name}</p>
+                    {group.existing_assets.length > 0 ? (
+                      <div className="space-y-1">
+                        {group.existing_assets.map((asset, idx) => (
+                          <div
+                            key={`${asset.resource_name}-${idx}`}
+                            className="flex items-center justify-between rounded border p-2 text-sm"
+                          >
+                            <span className="flex-1">{asset.text}</span>
+                            <span className="ml-2 text-xs text-muted-foreground uppercase">
+                              {asset.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No text assets in this group</p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   );
