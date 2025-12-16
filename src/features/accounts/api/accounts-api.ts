@@ -6,6 +6,7 @@ import type {
   ConnectAccountResponse,
   GoogleAdsAccount,
   GoogleAdsOAuthCallbackParams,
+  OAuth2TokenResponse,
 } from "../types";
 
 const GOOGLE_ADS_PATH = "google-ads";
@@ -43,11 +44,11 @@ export const accountsApi = {
     }),
 
   /**
-   * Complete Google Ads OAuth callback
+   * Complete Google Ads OAuth callback - exchanges code for tokens
    * POST /google-ads/oauth/callback
    */
-  completeConnect: (params: GoogleAdsOAuthCallbackParams) =>
-    apiMethods.post<GoogleAdsAccount>(`${GOOGLE_ADS_PATH}/oauth/callback`, params),
+  exchangeCodeForTokens: (params: GoogleAdsOAuthCallbackParams) =>
+    apiMethods.post<OAuth2TokenResponse>(`${GOOGLE_ADS_PATH}/oauth/callback`, params),
 
   /**
    * Connect account directly with refresh token (after OAuth)

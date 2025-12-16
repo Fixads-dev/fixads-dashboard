@@ -4,11 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { smartOptimizerApi } from "../api/smart-optimizer-api";
-import type {
-  SmartOptimizerApplyRequest,
-  SmartOptimizerRequest,
-  TargetCpaRequest,
-} from "../types";
+import type { SmartOptimizerApplyRequest, SmartOptimizerRequest, TargetCpaRequest } from "../types";
 
 interface AnalyzeParams {
   accountId: string;
@@ -33,10 +29,7 @@ export function useSmartOptimizerAnalyze() {
     mutationFn: ({ accountId, request }: AnalyzeParams) =>
       smartOptimizerApi.analyze(accountId, request),
     onSuccess: (data) => {
-      queryClient.setQueryData(
-        ["smart-optimizer-result", data.optimization_run_id],
-        data,
-      );
+      queryClient.setQueryData(["smart-optimizer-result", data.optimization_run_id], data);
       toast.success("Smart analysis complete", {
         description: `Found ${data.assets_to_remove.length} bad assets, generated ${data.assets_to_add.length} replacements`,
       });

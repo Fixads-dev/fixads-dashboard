@@ -16,10 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
 import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import {
-  useApplyTextChanges,
-  useTextOptimizerAnalyze,
   type AnalyzedAssetGroup,
   type TextOptimizerResponse,
+  useApplyTextChanges,
+  useTextOptimizerAnalyze,
 } from "@/features/optimizer";
 import { EmptyState } from "@/shared/components";
 
@@ -73,9 +73,7 @@ export function TextOptimizerContent() {
         asset_group_id: ag.asset_group_id,
         asset_group_name: ag.asset_group_name,
         suggested_assets: ag.suggested_assets
-          .filter((sa) =>
-            selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`),
-          )
+          .filter((sa) => selectedAssets.has(`${ag.asset_group_id}-${sa.field_type}-${sa.text}`))
           .map((sa) => ({
             field_type: sa.field_type,
             text: sa.text,
@@ -251,11 +249,7 @@ export function TextOptimizerContent() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{group.asset_group_name}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => selectAllInGroup(group)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => selectAllInGroup(group)}>
                     Select All
                   </Button>
                 </div>
@@ -269,10 +263,7 @@ export function TextOptimizerContent() {
                 {group.suggested_assets.map((suggestion) => {
                   const key = `${group.asset_group_id}-${suggestion.field_type}-${suggestion.text}`;
                   return (
-                    <div
-                      key={key}
-                      className="flex items-start gap-3 rounded-lg border p-3"
-                    >
+                    <div key={key} className="flex items-start gap-3 rounded-lg border p-3">
                       <Checkbox
                         checked={selectedAssets.has(key)}
                         onCheckedChange={() => toggleAsset(key)}

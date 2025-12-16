@@ -1,9 +1,8 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { QUERY_KEYS, ROUTES } from "@/shared/lib/constants";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { accountsApi } from "../api/accounts-api";
 import type { ConnectAccountRequest, GoogleAdsOAuthCallbackParams } from "../types";
 
@@ -29,26 +28,29 @@ export function useStartConnectAccount() {
 }
 
 /**
- * Hook to complete the Google Ads OAuth callback
+ * Hook to exchange OAuth code for tokens
  */
-export function useCompleteConnectAccount() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
+export function useExchangeCodeForTokens() {
   return useMutation({
-    mutationFn: (params: GoogleAdsOAuthCallbackParams) => accountsApi.completeConnect(params),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-      toast.success("Account connected successfully", {
-        description: `Connected ${data.descriptive_name ?? data.customer_id}`,
-      });
-      router.replace(ROUTES.ACCOUNTS);
-    },
+    mutationFn: (params: GoogleAdsOAuthCallbackParams) => accountsApi.exchangeCodeForTokens(params),
     onError: (error) => {
-      toast.error("Failed to connect account", {
+      toast.error("Failed to exchange authorization code", {
         description: error.message,
       });
-      router.replace(ROUTES.ACCOUNTS);
+    },
+  });
+}
+
+/**
+ * Hook to get accessible customers with a refresh token
+ */
+export function useGetAccessibleCustomers() {
+  return useMutation({
+    mutationFn: (refreshToken: string) => accountsApi.getAccessibleCustomers(refreshToken),
+    onError: (error) => {
+      toast.error("Failed to list accessible accounts", {
+        description: error.message,
+      });
     },
   });
 }

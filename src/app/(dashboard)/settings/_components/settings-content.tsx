@@ -44,11 +44,7 @@ export function SettingsContent() {
               <Avatar className="h-16 w-16">
                 <AvatarImage src={photoUrl} alt={displayName} />
                 <AvatarFallback className="text-lg">
-                  {user ? (
-                    getInitials(displayName)
-                  ) : (
-                    <User2 className="h-8 w-8" />
-                  )}
+                  {user ? getInitials(displayName) : <User2 className="h-8 w-8" />}
                 </AvatarFallback>
               </Avatar>
               <div>

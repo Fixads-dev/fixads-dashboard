@@ -128,13 +128,12 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user ? getUserPhotoUrl(user) : undefined} alt={user ? getUserDisplayName(user) : undefined} />
+                    <AvatarImage
+                      src={user ? getUserPhotoUrl(user) : undefined}
+                      alt={user ? getUserDisplayName(user) : undefined}
+                    />
                     <AvatarFallback>
-                      {user ? (
-                        getInitials(getUserDisplayName(user))
-                      ) : (
-                        <User2 className="h-4 w-4" />
-                      )}
+                      {user ? getInitials(getUserDisplayName(user)) : <User2 className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">

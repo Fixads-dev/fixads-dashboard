@@ -16,11 +16,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
 import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import {
+  type AssetToRemove,
   BadAssetChip,
+  type SmartOptimizerResponse,
   useApplySmartChanges,
   useSmartOptimizerAnalyze,
-  type AssetToRemove,
-  type SmartOptimizerResponse,
 } from "@/features/optimizer";
 import { EmptyState } from "@/shared/components";
 import { formatCurrency } from "@/shared/lib/format";
@@ -333,7 +333,9 @@ export function SmartOptimizerContent() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Suggested Replacements ({analysisResult.assets_to_add.length})</CardTitle>
+                    <CardTitle>
+                      Suggested Replacements ({analysisResult.assets_to_add.length})
+                    </CardTitle>
                     <CardDescription>Select assets to add</CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={selectAllCompliantSuggestions}>

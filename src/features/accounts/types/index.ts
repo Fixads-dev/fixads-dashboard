@@ -52,6 +52,16 @@ export interface GoogleAdsOAuthCallbackParams {
 }
 
 /**
+ * POST /google-ads/oauth/callback response - returns tokens, not account
+ */
+export interface OAuth2TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+/**
  * POST /google-ads/accounts request - connect with refresh token
  */
 export interface ConnectAccountRequest {

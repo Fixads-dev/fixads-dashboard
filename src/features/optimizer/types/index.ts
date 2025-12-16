@@ -1,4 +1,4 @@
-import type { AssetFieldType, Asset, SuggestedAsset } from "@/features/campaigns";
+import type { Asset, AssetFieldType, SuggestedAsset } from "@/features/campaigns";
 
 /**
  * Text Optimizer Types - matches API (snake_case)

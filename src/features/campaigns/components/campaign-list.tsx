@@ -56,11 +56,7 @@ export function CampaignList({ filters, onConnectAccount }: CampaignListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {campaigns.map((campaign) => (
-        <CampaignCard
-          key={campaign.campaign_id}
-          campaign={campaign}
-          accountId={accountId ?? ""}
-        />
+        <CampaignCard key={campaign.campaign_id} campaign={campaign} accountId={accountId ?? ""} />
       ))}
     </div>
   );
