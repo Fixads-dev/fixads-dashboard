@@ -23,6 +23,24 @@ export function useCampaign(accountId: string, campaignId: string) {
   });
 }
 
+export function useCampaignDetail(accountId: string, campaignId: string) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.CAMPAIGN(accountId, campaignId), "detail"],
+    queryFn: () => campaignsApi.getCampaignDetail(accountId, campaignId),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useDailyMetrics(accountId: string, campaignId: string, days: number = 30) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.CAMPAIGN(accountId, campaignId), "daily", days],
+    queryFn: () => campaignsApi.getDailyMetrics(accountId, campaignId, days),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - daily data doesn't change as often
+  });
+}
+
 export function useAssetGroups(accountId: string, campaignId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.ASSET_GROUPS(campaignId),

@@ -1,1 +1,8 @@
-export { useAssetGroups, useCampaign, useCampaigns, useTextAssets } from "./use-campaigns";
+export {
+  useAssetGroups,
+  useCampaign,
+  useCampaignDetail,
+  useCampaigns,
+  useDailyMetrics,
+  useTextAssets,
+} from "./use-campaigns";

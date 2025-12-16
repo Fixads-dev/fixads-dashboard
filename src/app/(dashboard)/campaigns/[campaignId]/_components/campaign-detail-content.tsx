@@ -1,12 +1,36 @@
 "use client";
 
-import { ArrowLeft, Loader2, Megaphone, Type } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  Calendar,
+  CircleDollarSign,
+  Eye,
+  Layers,
+  Loader2,
+  Megaphone,
+  MousePointerClick,
+  Percent,
+  Settings,
+  Target,
+  TrendingUp,
+  Type,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { ImpressionShareChart, KPICard, MetricsLineChart } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAssetGroups, useCampaigns, useTextAssets } from "@/features/campaigns";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  useAssetGroups,
+  useCampaignDetail,
+  useCampaigns,
+  useDailyMetrics,
+  useTextAssets,
+} from "@/features/campaigns";
 import type { AssetPerformance, CampaignStatus, TextAsset } from "@/features/campaigns/types";
 import { formatCompact, formatCurrency, formatPercent } from "@/shared/lib/format";
 
@@ -27,6 +51,18 @@ const performanceColors: Record<AssetPerformance, string> = {
   LEARNING: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
   PENDING: "bg-gray-500/10 text-gray-600 border-gray-500/20",
   UNSPECIFIED: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+};
+
+const biddingStrategyLabels: Record<string, string> = {
+  TARGET_CPA: "Target CPA",
+  TARGET_ROAS: "Target ROAS",
+  MAXIMIZE_CONVERSIONS: "Maximize Conversions",
+  MAXIMIZE_CONVERSION_VALUE: "Maximize Conversion Value",
+  TARGET_SPEND: "Target Spend",
+  MANUAL_CPC: "Manual CPC",
+  MANUAL_CPM: "Manual CPM",
+  UNSPECIFIED: "Not Set",
+  UNKNOWN: "Unknown",
 };
 
 function TextAssetItem({ asset }: { asset: TextAsset }) {
@@ -50,21 +86,31 @@ export function CampaignDetailContent() {
   const campaignId = params.campaignId as string;
   const accountId = searchParams.get("account") ?? "";
 
+  // Fetch all data
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(
     accountId ? { account_id: accountId } : undefined,
   );
+  const { data: campaignDetail, isLoading: detailLoading } = useCampaignDetail(
+    accountId,
+    campaignId,
+  );
+  const { data: dailyMetrics, isLoading: dailyLoading } = useDailyMetrics(accountId, campaignId);
   const { data: assetGroups, isLoading: assetGroupsLoading } = useAssetGroups(
     accountId,
     campaignId,
   );
   const { data: textAssets, isLoading: textAssetsLoading } = useTextAssets(accountId, campaignId);
 
-  const campaign = campaigns?.find((c) => c.campaign_id === campaignId);
+  // Use campaign detail if available, otherwise fall back to basic campaign data
+  const campaign = campaignDetail ?? campaigns?.find((c) => c.campaign_id === campaignId);
 
-  // Calculate CTR from flat metrics
+  // Calculate derived metrics
   const ctr = campaign?.impressions ? (campaign.clicks / campaign.impressions) * 100 : 0;
+  const conversionRate = campaign?.clicks ? (campaign.conversions / campaign.clicks) * 100 : 0;
+  const avgCpc = campaign?.clicks ? microsToDollars(campaign.cost_micros) / campaign.clicks : 0;
 
-  if (campaignsLoading) {
+  // Loading state
+  if (campaignsLoading || detailLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -72,6 +118,7 @@ export function CampaignDetailContent() {
     );
   }
 
+  // Not found state
   if (!campaign) {
     return (
       <div className="p-6">
@@ -92,6 +139,7 @@ export function CampaignDetailContent() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/campaigns">
           <Button variant="ghost" size="sm">
@@ -101,6 +149,7 @@ export function CampaignDetailContent() {
         </Link>
       </div>
 
+      {/* Campaign Title */}
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
           <Megaphone className="h-6 w-6 text-blue-500" />
@@ -108,147 +157,526 @@ export function CampaignDetailContent() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{campaign.campaign_name}</h1>
-            <Badge variant={statusColors[campaign.status] ?? "secondary"}>{campaign.status}</Badge>
+            <Badge variant={statusColors[campaign.status as CampaignStatus] ?? "secondary"}>
+              {campaign.status}
+            </Badge>
           </div>
           <p className="text-sm text-muted-foreground">Campaign ID: {campaign.campaign_id}</p>
         </div>
+        {campaign.optimization_score !== undefined && (
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Optimization Score</p>
+            <div className="flex items-center gap-2">
+              <Progress value={campaign.optimization_score * 100} className="w-24" />
+              <span className="font-semibold">
+                {(campaign.optimization_score * 100).toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Metrics (Last 30 Days)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Impressions</p>
-              <p className="text-2xl font-semibold">{formatCompact(campaign.impressions)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Clicks</p>
-              <p className="text-2xl font-semibold">{formatCompact(campaign.clicks)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Cost</p>
-              <p className="text-2xl font-semibold">
-                {formatCurrency(microsToDollars(campaign.cost_micros))}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">CTR</p>
-              <p className="text-2xl font-semibold">{formatPercent(ctr)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs for organized content */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Asset Groups</CardTitle>
-          <CardDescription>Manage assets for this campaign</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {assetGroupsLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+            <KPICard
+              title="Impressions"
+              value={formatCompact(campaign.impressions)}
+              icon={Eye}
+              size="sm"
+            />
+            <KPICard
+              title="Clicks"
+              value={formatCompact(campaign.clicks)}
+              icon={MousePointerClick}
+              size="sm"
+            />
+            <KPICard
+              title="Cost"
+              value={formatCurrency(microsToDollars(campaign.cost_micros))}
+              icon={CircleDollarSign}
+              size="sm"
+            />
+            <KPICard
+              title="CTR"
+              value={formatPercent(campaign.ctr ?? ctr)}
+              icon={Percent}
+              size="sm"
+            />
+            <KPICard
+              title="Conversions"
+              value={campaign.conversions.toFixed(1)}
+              icon={Target}
+              size="sm"
+            />
+            <KPICard
+              title="Conv. Rate"
+              value={formatPercent(conversionRate)}
+              icon={TrendingUp}
+              size="sm"
+            />
+          </div>
+
+          {/* Secondary KPIs */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <KPICard
+              title="Avg. CPC"
+              value={formatCurrency(
+                campaign.average_cpc ? microsToDollars(campaign.average_cpc) : avgCpc,
+              )}
+              subtitle="Cost per click"
+              size="sm"
+            />
+            <KPICard
+              title="Cost/Conv."
+              value={formatCurrency(
+                campaign.cost_per_conversion
+                  ? microsToDollars(campaign.cost_per_conversion)
+                  : campaign.conversions > 0
+                    ? microsToDollars(campaign.cost_micros) / campaign.conversions
+                    : 0,
+              )}
+              subtitle="Cost per conversion"
+              size="sm"
+            />
+            <KPICard
+              title="Conv. Value"
+              value={formatCurrency(campaign.conversions_value ?? 0)}
+              subtitle="Total conversion value"
+              size="sm"
+            />
+            <KPICard
+              title="View-Through"
+              value={formatCompact(campaign.view_through_conversions ?? 0)}
+              subtitle="View-through conversions"
+              size="sm"
+            />
+          </div>
+
+          {/* Performance Chart */}
+          {dailyMetrics && dailyMetrics.length > 0 && (
+            <MetricsLineChart
+              data={dailyMetrics}
+              title="Performance Over Time"
+              description="Last 30 days"
+              metrics={[
+                { key: "impressions", label: "Impressions", color: "#3b82f6" },
+                { key: "clicks", label: "Clicks", color: "#22c55e" },
+                { key: "conversions", label: "Conversions", color: "#f59e0b", yAxisId: "right" },
+              ]}
+              height={300}
+            />
+          )}
+
+          {/* Impression Share */}
+          {(campaign.search_impression_share !== undefined ||
+            campaign.search_budget_lost_impression_share !== undefined) && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <ImpressionShareChart
+                impressionShare={campaign.search_impression_share ?? 0}
+                budgetLost={campaign.search_budget_lost_impression_share ?? 0}
+                rankLost={campaign.search_rank_lost_impression_share ?? 0}
+                title="Search Impression Share"
+                description="How often your ads show vs. eligible impressions"
+              />
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">All Conversions</span>
+                      <span className="font-medium">
+                        {(campaign.all_conversions ?? campaign.conversions).toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">View-Through Conv.</span>
+                      <span className="font-medium">
+                        {formatCompact(campaign.view_through_conversions ?? 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Asset Groups</span>
+                      <span className="font-medium">{assetGroups?.length ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Bidding Strategy</span>
+                      <span className="font-medium">
+                        {biddingStrategyLabels[campaign.bidding_strategy_type ?? "UNSPECIFIED"]}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          ) : assetGroups && assetGroups.length > 0 ? (
-            <div className="space-y-3">
-              {assetGroups.map((group) => (
-                <div
-                  key={group.asset_group_id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div>
-                    <p className="font-medium">{group.asset_group_name}</p>
-                    <p className="text-sm text-muted-foreground">ID: {group.asset_group_id}</p>
-                    {group.final_url && (
-                      <p className="text-sm text-muted-foreground truncate max-w-md">
-                        {group.final_url}
-                      </p>
+          )}
+        </TabsContent>
+
+        {/* Performance Tab */}
+        <TabsContent value="performance" className="space-y-6">
+          {/* Cost Analysis */}
+          {dailyMetrics && dailyMetrics.length > 0 && (
+            <>
+              <MetricsLineChart
+                data={dailyMetrics}
+                title="Cost Analysis"
+                description="Daily spending and CPC"
+                metrics={[
+                  {
+                    key: "cost_micros",
+                    label: "Cost",
+                    color: "#ef4444",
+                    formatter: (v) => formatCurrency(microsToDollars(v)),
+                  },
+                  {
+                    key: "average_cpc",
+                    label: "Avg. CPC",
+                    color: "#8b5cf6",
+                    yAxisId: "right",
+                    formatter: (v) => formatCurrency(microsToDollars(v)),
+                  },
+                ]}
+                height={300}
+              />
+
+              <MetricsLineChart
+                data={dailyMetrics}
+                title="Conversion Performance"
+                description="Daily conversions and CTR"
+                metrics={[
+                  { key: "conversions", label: "Conversions", color: "#22c55e" },
+                  {
+                    key: "ctr",
+                    label: "CTR",
+                    color: "#f59e0b",
+                    yAxisId: "right",
+                    formatter: (v) => `${(v * 100).toFixed(2)}%`,
+                  },
+                ]}
+                height={300}
+              />
+            </>
+          )}
+
+          {dailyLoading && (
+            <Card>
+              <CardContent className="flex items-center justify-center p-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          )}
+
+          {!dailyLoading && (!dailyMetrics || dailyMetrics.length === 0) && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Activity className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No performance data available yet</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Assets Tab */}
+        <TabsContent value="assets" className="space-y-6">
+          {/* Asset Groups */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Asset Groups</CardTitle>
+              </div>
+              <CardDescription>Manage assets for this campaign</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {assetGroupsLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : assetGroups && assetGroups.length > 0 ? (
+                <div className="space-y-3">
+                  {assetGroups.map((group) => (
+                    <div
+                      key={group.asset_group_id}
+                      className="flex items-center justify-between rounded-lg border p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{group.asset_group_name}</p>
+                        <p className="text-sm text-muted-foreground">ID: {group.asset_group_id}</p>
+                        {group.final_url && (
+                          <p className="text-sm text-muted-foreground truncate max-w-md">
+                            {group.final_url}
+                          </p>
+                        )}
+                      </div>
+                      {group.status && (
+                        <Badge variant={statusColors[group.status] ?? "secondary"}>
+                          {group.status}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No asset groups found</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Text Assets */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Type className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Text Assets</CardTitle>
+              </div>
+              <CardDescription>
+                Headlines, long headlines, and descriptions for this campaign
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {textAssetsLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : textAssets && textAssets.length > 0 ? (
+                <div className="space-y-6">
+                  {textAssets.map((group) => (
+                    <div key={group.asset_group_id} className="space-y-3">
+                      <h4 className="font-medium text-sm border-b pb-2">
+                        {group.asset_group_name}
+                      </h4>
+
+                      {group.headlines.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Headlines ({group.headlines.length})
+                          </p>
+                          <div className="space-y-1">
+                            {group.headlines.map((asset) => (
+                              <TextAssetItem key={asset.asset_id} asset={asset} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {group.long_headlines.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Long Headlines ({group.long_headlines.length})
+                          </p>
+                          <div className="space-y-1">
+                            {group.long_headlines.map((asset) => (
+                              <TextAssetItem key={asset.asset_id} asset={asset} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {group.descriptions.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Descriptions ({group.descriptions.length})
+                          </p>
+                          <div className="space-y-1">
+                            {group.descriptions.map((asset) => (
+                              <TextAssetItem key={asset.asset_id} asset={asset} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No text assets found</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Campaign Settings</CardTitle>
+              </div>
+              <CardDescription>Configuration and bidding details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Bidding Settings */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <CircleDollarSign className="h-4 w-4" />
+                    Bidding
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Strategy</span>
+                      <span className="font-medium">
+                        {biddingStrategyLabels[campaign.bidding_strategy_type ?? "UNSPECIFIED"]}
+                      </span>
+                    </div>
+                    {campaign.target_cpa_micros && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Target CPA</span>
+                        <span className="font-medium">
+                          {formatCurrency(microsToDollars(campaign.target_cpa_micros))}
+                        </span>
+                      </div>
+                    )}
+                    {campaign.target_roas && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Target ROAS</span>
+                        <span className="font-medium">
+                          {(campaign.target_roas * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    )}
+                    {campaign.budget_amount_micros && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Daily Budget</span>
+                        <span className="font-medium">
+                          {formatCurrency(microsToDollars(campaign.budget_amount_micros))}
+                        </span>
+                      </div>
                     )}
                   </div>
-                  {group.status && (
-                    <Badge variant={statusColors[group.status] ?? "secondary"}>
-                      {group.status}
-                    </Badge>
-                  )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">No asset groups found</p>
-          )}
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Type className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Text Assets</CardTitle>
-          </div>
-          <CardDescription>
-            Headlines, long headlines, and descriptions for this campaign
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {textAssetsLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : textAssets && textAssets.length > 0 ? (
-            <div className="space-y-6">
-              {textAssets.map((group) => (
-                <div key={group.asset_group_id} className="space-y-3">
-                  <h4 className="font-medium text-sm border-b pb-2">{group.asset_group_name}</h4>
-
-                  {group.headlines.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Headlines ({group.headlines.length})
-                      </p>
-                      <div className="space-y-1">
-                        {group.headlines.map((asset) => (
-                          <TextAssetItem key={asset.asset_id} asset={asset} />
-                        ))}
-                      </div>
+                {/* Schedule */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Schedule
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Start Date</span>
+                      <span className="font-medium">{campaign.start_date ?? "Not set"}</span>
                     </div>
-                  )}
-
-                  {group.long_headlines.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Long Headlines ({group.long_headlines.length})
-                      </p>
-                      <div className="space-y-1">
-                        {group.long_headlines.map((asset) => (
-                          <TextAssetItem key={asset.asset_id} asset={asset} />
-                        ))}
-                      </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">End Date</span>
+                      <span className="font-medium">{campaign.end_date ?? "No end date"}</span>
                     </div>
-                  )}
-
-                  {group.descriptions.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Descriptions ({group.descriptions.length})
-                      </p>
-                      <div className="space-y-1">
-                        {group.descriptions.map((asset) => (
-                          <TextAssetItem key={asset.asset_id} asset={asset} />
-                        ))}
-                      </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge
+                        variant={statusColors[campaign.status as CampaignStatus] ?? "secondary"}
+                        className="h-5"
+                      >
+                        {campaign.status}
+                      </Badge>
                     </div>
-                  )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">No text assets found</p>
+
+                {/* Performance Summary */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Performance Summary
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    {campaign.optimization_score !== undefined && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Optimization Score</span>
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={campaign.optimization_score * 100}
+                            className="w-16 h-2"
+                          />
+                          <span className="font-medium">
+                            {(campaign.optimization_score * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {campaign.search_impression_share !== undefined && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Impression Share</span>
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={campaign.search_impression_share * 100}
+                            className="w-16 h-2"
+                          />
+                          <span className="font-medium">
+                            {(campaign.search_impression_share * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* IDs */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">Identifiers</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Campaign ID</span>
+                      <code className="text-xs bg-muted px-2 py-0.5 rounded">
+                        {campaign.campaign_id}
+                      </code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Account ID</span>
+                      <code className="text-xs bg-muted px-2 py-0.5 rounded">{accountId}</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Raw Metrics Card - for developers/debugging */}
+          {campaignDetail?.metrics && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">All Metrics (Raw Data)</CardTitle>
+                <CardDescription>Complete metrics data from Google Ads API</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3 lg:grid-cols-4">
+                  {Object.entries(campaignDetail.metrics).map(([key, value]) => {
+                    if (value === undefined || value === null) return null;
+                    let displayValue = String(value);
+                    if (key.includes("micros")) {
+                      displayValue = formatCurrency(microsToDollars(Number(value)));
+                    } else if (key.includes("rate") || key.includes("share") || key === "ctr") {
+                      displayValue = formatPercent(Number(value) * 100);
+                    } else if (typeof value === "number") {
+                      displayValue = formatCompact(value);
+                    }
+                    return (
+                      <div key={key} className="flex flex-col">
+                        <span className="text-muted-foreground text-xs capitalize">
+                          {key.replace(/_/g, " ")}
+                        </span>
+                        <span className="font-medium">{String(displayValue)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
