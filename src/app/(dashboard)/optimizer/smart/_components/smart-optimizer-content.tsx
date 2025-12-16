@@ -1,11 +1,12 @@
 "use client";
 
-import { AlertCircle, Globe, Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,13 +27,14 @@ import {
 import { EmptyState } from "@/shared/components";
 import { formatCurrency } from "@/shared/lib/format";
 
-const SUPPORTED_LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "de", label: "German" },
-  { code: "es", label: "Spanish" },
-  { code: "fr", label: "French" },
-  { code: "he", label: "Hebrew" },
-  { code: "ru", label: "Russian" },
+const ASSET_FIELD_TYPES = [
+  { value: "HEADLINE", label: "Headlines", description: "Short text (up to 30 chars)" },
+  { value: "DESCRIPTION", label: "Descriptions", description: "Longer text (up to 90 chars)" },
+  {
+    value: "LONG_HEADLINE",
+    label: "Long Headlines",
+    description: "Extended headlines (up to 90 chars)",
+  },
 ] as const;
 
 export function SmartOptimizerContent() {
@@ -40,7 +42,9 @@ export function SmartOptimizerContent() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
   const [finalUrl, setFinalUrl] = useState<string>("");
-  const [languageCode, setLanguageCode] = useState<string>("en");
+  const [assetFieldTypes, setAssetFieldTypes] = useState<Set<string>>(
+    new Set(["HEADLINE", "DESCRIPTION"]),
+  );
   const [freeformPrompt, setFreeformPrompt] = useState<string>("");
   const [keywords, setKeywords] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<SmartOptimizerResponse | null>(null);
@@ -64,6 +68,7 @@ export function SmartOptimizerContent() {
 
   const handleAnalyze = () => {
     if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId || !finalUrl) return;
+    if (assetFieldTypes.size === 0) return;
 
     const keywordList = keywords
       .split(",")
@@ -77,7 +82,7 @@ export function SmartOptimizerContent() {
           campaign_id: selectedCampaignId,
           asset_group_id: selectedAssetGroupId,
           final_url: finalUrl,
-          language_code: languageCode,
+          asset_field_types: Array.from(assetFieldTypes),
           freeform_prompt: freeformPrompt || undefined,
           keywords: keywordList.length > 0 ? keywordList : undefined,
         },
@@ -90,6 +95,18 @@ export function SmartOptimizerContent() {
         },
       },
     );
+  };
+
+  const toggleAssetFieldType = (type: string) => {
+    setAssetFieldTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
   };
 
   const handleApply = () => {
@@ -183,7 +200,8 @@ export function SmartOptimizerContent() {
     selectedCampaignId &&
     selectedAssetGroupId &&
     finalUrl.trim() &&
-    isValidUrl(finalUrl);
+    isValidUrl(finalUrl) &&
+    assetFieldTypes.size > 0;
   const hasResults = analysisResult !== null;
   const totalChanges = selectedToRemove.size + selectedToAdd.size;
 
@@ -306,51 +324,51 @@ export function SmartOptimizerContent() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label htmlFor="final-url" className="text-sm font-medium flex items-center gap-2">
-                <Link className="h-4 w-4" />
-                Landing Page URL
-              </label>
-              <Input
-                id="final-url"
-                type="url"
-                placeholder="https://example.com/landing-page"
-                value={finalUrl}
-                onChange={(e) => setFinalUrl(e.target.value)}
-                className="mt-1.5"
-                disabled={!selectedAssetGroupId}
-              />
-              {finalUrl && !isValidUrl(finalUrl) && (
-                <p className="text-xs text-destructive mt-1">Please enter a valid URL</p>
-              )}
-            </div>
+          <div>
+            <label htmlFor="final-url" className="text-sm font-medium flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Landing Page URL
+            </label>
+            <Input
+              id="final-url"
+              type="url"
+              placeholder="https://example.com/landing-page"
+              value={finalUrl}
+              onChange={(e) => setFinalUrl(e.target.value)}
+              className="mt-1.5"
+              disabled={!selectedAssetGroupId}
+            />
+            {finalUrl && !isValidUrl(finalUrl) && (
+              <p className="text-xs text-destructive mt-1">Please enter a valid URL</p>
+            )}
+          </div>
 
-            <div>
-              <label
-                htmlFor="language-code"
-                className="text-sm font-medium flex items-center gap-2"
-              >
-                <Globe className="h-4 w-4" />
-                Output Language
-              </label>
-              <Select
-                value={languageCode}
-                onValueChange={setLanguageCode}
-                disabled={!selectedAssetGroupId}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <p className="text-sm font-medium mb-2">Asset Types to Generate</p>
+            <div className="flex flex-wrap gap-4">
+              {ASSET_FIELD_TYPES.map((type) => (
+                <div key={type.value} className="flex items-start space-x-2">
+                  <Checkbox
+                    id={`asset-type-${type.value}`}
+                    checked={assetFieldTypes.has(type.value)}
+                    onCheckedChange={() => toggleAssetFieldType(type.value)}
+                    disabled={!selectedAssetGroupId}
+                  />
+                  <div className="grid gap-0.5 leading-none">
+                    <Label
+                      htmlFor={`asset-type-${type.value}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {type.label}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">{type.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
+            {assetFieldTypes.size === 0 && selectedAssetGroupId && (
+              <p className="text-xs text-destructive mt-1">Select at least one asset type</p>
+            )}
           </div>
 
           <div>

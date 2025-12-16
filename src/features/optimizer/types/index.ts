@@ -91,14 +91,14 @@ export interface SmartOptimizerRequest {
   campaign_id: string;
   asset_group_id: string;
   final_url: string; // Landing page URL for AI to crawl
-  language_code: string; // ISO 639-1: "en", "de", etc.
-  freeform_prompt?: string; // Optional custom instructions for AI
+  asset_field_types?: string[]; // Types to generate: HEADLINE, DESCRIPTION, LONG_HEADLINE
+  freeform_prompt?: string; // Optional custom instructions for AI (1-1500 chars)
   keywords?: string[]; // Optional keywords to incorporate
   max_replacements?: number; // Max bad assets to flag for removal
 }
 
 export interface GeneratedTextAsset {
-  asset_type: "HEADLINE" | "DESCRIPTION";
+  asset_type: "HEADLINE" | "DESCRIPTION" | "LONG_HEADLINE";
   text: string;
   char_count: number;
   compliance_passed: boolean;

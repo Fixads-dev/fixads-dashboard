@@ -155,6 +155,13 @@ export const handlers = [
           compliance_issues: [],
         },
         {
+          asset_type: "LONG_HEADLINE",
+          text: "AI Generated Long Headline - Quality Products at Great Prices",
+          char_count: 61,
+          compliance_passed: true,
+          compliance_issues: [],
+        },
+        {
           asset_type: "DESCRIPTION",
           text: "AI Generated Description from landing page analysis",
           char_count: 52,
