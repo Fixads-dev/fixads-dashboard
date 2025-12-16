@@ -61,6 +61,7 @@ export type BadAssetClassification = "ZOMBIE" | "MONEY_WASTER" | "CLICKBAIT" | "
 
 export interface AssetToRemove {
   asset_id: string;
+  asset_group_asset_resource_name?: string; // Used for pausing via Google Ads API
   asset_type: AssetFieldType;
   text: string;
   reason_code: BadAssetClassification;

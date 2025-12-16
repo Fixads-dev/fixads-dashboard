@@ -95,13 +95,18 @@ export function SmartOptimizerContent() {
     );
   };
 
-  const toggleRemove = (assetId: string) => {
+  // Get the identifier used for pausing assets (prefer asset_group_asset_resource_name)
+  const getRemovalId = (asset: AssetToRemove): string =>
+    asset.asset_group_asset_resource_name || asset.asset_id;
+
+  const toggleRemove = (asset: AssetToRemove) => {
+    const id = getRemovalId(asset);
     setSelectedToRemove((prev) => {
       const next = new Set(prev);
-      if (next.has(assetId)) {
-        next.delete(assetId);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(assetId);
+        next.add(id);
       }
       return next;
     });
@@ -121,7 +126,7 @@ export function SmartOptimizerContent() {
 
   const selectAllBadAssets = () => {
     if (analysisResult?.assets_to_remove) {
-      setSelectedToRemove(new Set(analysisResult.assets_to_remove.map((a) => a.asset_id)));
+      setSelectedToRemove(new Set(analysisResult.assets_to_remove.map(getRemovalId)));
     }
   };
 
@@ -303,12 +308,12 @@ export function SmartOptimizerContent() {
               <CardContent className="space-y-3">
                 {analysisResult.assets_to_remove.map((asset: AssetToRemove) => (
                   <div
-                    key={asset.asset_id}
+                    key={getRemovalId(asset)}
                     className="flex items-start gap-3 rounded-lg border p-3"
                   >
                     <Checkbox
-                      checked={selectedToRemove.has(asset.asset_id)}
-                      onCheckedChange={() => toggleRemove(asset.asset_id)}
+                      checked={selectedToRemove.has(getRemovalId(asset))}
+                      onCheckedChange={() => toggleRemove(asset)}
                     />
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
