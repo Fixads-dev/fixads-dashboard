@@ -1,4 +1,4 @@
-import { apiMethods } from "@/shared/api";
+import { api, apiMethods } from "@/shared/api";
 import type {
   BadAssetHistoryResponse,
   SmartOptimizerApplyRequest,
@@ -11,25 +11,30 @@ import type {
 
 const GOOGLE_ADS_PATH = "google-ads";
 
+// Extended timeout for operations that make multiple Google Ads API calls
+const EXTENDED_TIMEOUT = 120000; // 2 minutes
+
 export const smartOptimizerApi = {
   /**
    * Analyze campaign for bad assets (ZOMBIE, MONEY_WASTER, etc.)
    * POST /google-ads/pmax/smart-optimizer/analyze?account_id=UUID
+   * Uses extended timeout due to Google Ads API + Gemini AI calls
    */
   analyze: (accountId: string, request: SmartOptimizerRequest) =>
-    apiMethods.post<SmartOptimizerResponse>(
+    api<SmartOptimizerResponse>(
       `${GOOGLE_ADS_PATH}/pmax/smart-optimizer/analyze?account_id=${accountId}`,
-      request,
+      { method: "post", json: request, timeout: EXTENDED_TIMEOUT },
     ),
 
   /**
    * Apply smart optimizer changes (replace bad assets)
    * POST /google-ads/pmax/smart-optimizer/apply?account_id=UUID
+   * Uses extended timeout due to multiple Google Ads API calls
    */
   applyChanges: (accountId: string, request: SmartOptimizerApplyRequest) =>
-    apiMethods.post<SmartOptimizerApplyResponse>(
+    api<SmartOptimizerApplyResponse>(
       `${GOOGLE_ADS_PATH}/pmax/smart-optimizer/apply?account_id=${accountId}`,
-      request,
+      { method: "post", json: request, timeout: EXTENDED_TIMEOUT },
     ),
 
   /**
