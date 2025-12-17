@@ -7,6 +7,9 @@ export interface User {
   full_name?: string;
   picture?: string;
   role?: string;
+  status?: string;
+  is_activated?: boolean;
+  /** @deprecated Use is_activated instead */
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
