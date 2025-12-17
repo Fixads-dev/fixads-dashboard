@@ -10,6 +10,7 @@ import {
   Megaphone,
   Search,
   Settings,
+  Shield,
   Sparkles,
   Target,
   Type,
@@ -38,6 +39,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { isAdminUser } from "@/features/admin";
 import { getUserDisplayName, getUserPhotoUrl, useCurrentUser, useLogout } from "@/features/auth";
 import { ROUTES } from "@/shared/lib/constants";
 
@@ -72,6 +74,8 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { data: user } = useCurrentUser();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
+
+  const showAdminSection = user && isAdminUser(user);
 
   const getInitials = (name: string) => {
     return name
@@ -129,6 +133,24 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+
+        {showAdminSection && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === ROUTES.ADMIN}>
+                    <Link href={ROUTES.ADMIN}>
+                      <Shield className="h-4 w-4" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

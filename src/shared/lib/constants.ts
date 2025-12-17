@@ -30,6 +30,7 @@ export const ROUTES = {
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
   SETTINGS: "/settings",
+  ADMIN: "/admin",
 } as const;
 
 /**
