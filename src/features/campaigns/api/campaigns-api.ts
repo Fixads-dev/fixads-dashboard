@@ -61,185 +61,125 @@ export const campaignsApi = {
 
   /**
    * Get comprehensive campaign details with all available metrics
-   * POST /google-ads/query?account_id=UUID
+   * GET /google-ads/pmax/campaigns/{campaignId}?account_id=UUID
    *
-   * Uses two queries:
-   * 1. Campaign metadata (no date filter) - always returns data if campaign exists
-   * 2. Metrics with date filter - returns multiple rows (one per day) that need aggregation
-   *
-   * IMPORTANT: When using segments.date, Google Ads returns one row PER DAY.
-   * We must aggregate all rows to get total metrics for the period.
+   * Uses dedicated backend endpoint that:
+   * 1. Fetches campaign metadata (no date filter)
+   * 2. Fetches metrics with date filter and aggregates per-day rows
+   * 3. Returns properly aggregated metrics for last 30 days
    */
   getCampaignDetail: async (
     accountId: string,
     campaignId: string,
   ): Promise<CampaignDetail | null> => {
-    // Query 1: Get campaign metadata WITHOUT date filter
-    // This ensures we get campaign info even if there's no metrics data
-    const metadataQuery = `
-      SELECT
-        campaign.id,
-        campaign.name,
-        campaign.status,
-        campaign.bidding_strategy_type,
-        campaign.optimization_score,
-        campaign.start_date,
-        campaign.end_date,
-        campaign_budget.amount_micros
-      FROM campaign
-      WHERE campaign.advertising_channel_type = 'PERFORMANCE_MAX'
-        AND campaign.id = ${campaignId}
-    `;
+    try {
+      // Use dedicated backend endpoint that handles aggregation properly
+      const response = await apiMethods.get<{
+        campaign_id: string;
+        campaign_name: string;
+        status: string;
+        bidding_strategy_type: string | null;
+        optimization_score: number | null;
+        start_date: string | null;
+        end_date: string | null;
+        budget_amount_micros: number;
+        impressions: number;
+        clicks: number;
+        cost_micros: number;
+        conversions: number;
+        conversions_value: number;
+        all_conversions: number;
+        all_conversions_value: number;
+        view_through_conversions: number;
+        interactions: number;
+        engagements: number;
+        invalid_clicks: number;
+        ctr: number;
+        average_cpc: number;
+        average_cpm: number;
+        cost_per_conversion: number;
+        conversion_rate: number;
+      }>(`${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}?account_id=${accountId}`);
 
-    // Query 2: Get metrics WITH date filter
-    // NOTE: This returns ONE ROW PER DAY - must aggregate all rows!
-    const metricsQuery = `
-      SELECT
-        campaign.id,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value,
-        metrics.all_conversions,
-        metrics.all_conversions_value,
-        metrics.view_through_conversions,
-        metrics.interactions,
-        metrics.engagements,
-        metrics.invalid_clicks
-      FROM campaign
-      WHERE campaign.advertising_channel_type = 'PERFORMANCE_MAX'
-        AND campaign.id = ${campaignId}
-        AND segments.date DURING LAST_30_DAYS
-    `;
-
-    // Execute both queries in parallel
-    const [metadataResult, metricsResult] = await Promise.all([
-      apiMethods.post<{ rows: Record<string, unknown>[] }>(
-        `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
-        { query: metadataQuery },
-      ),
-      apiMethods.post<{ rows: Record<string, unknown>[] }>(
-        `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
-        { query: metricsQuery },
-      ),
-    ]);
-
-    // Campaign must exist (metadata query must return data)
-    if (!metadataResult.rows || metadataResult.rows.length === 0) {
-      return null;
-    }
-
-    const meta = metadataResult.rows[0];
-
-    // Aggregate metrics from all rows (one row per day)
-    // IMPORTANT: segments.date returns multiple rows that must be summed
-    const metricsRows = metricsResult.rows ?? [];
-    const aggregatedMetrics = {
-      impressions: 0,
-      clicks: 0,
-      cost_micros: 0,
-      conversions: 0,
-      conversions_value: 0,
-      all_conversions: 0,
-      all_conversions_value: 0,
-      view_through_conversions: 0,
-      interactions: 0,
-      engagements: 0,
-      invalid_clicks: 0,
-    };
-
-    for (const row of metricsRows) {
-      aggregatedMetrics.impressions += Number(row["metrics.impressions"] ?? 0);
-      aggregatedMetrics.clicks += Number(row["metrics.clicks"] ?? 0);
-      aggregatedMetrics.cost_micros += Number(row["metrics.cost_micros"] ?? 0);
-      aggregatedMetrics.conversions += Number(row["metrics.conversions"] ?? 0);
-      aggregatedMetrics.conversions_value += Number(row["metrics.conversions_value"] ?? 0);
-      aggregatedMetrics.all_conversions += Number(row["metrics.all_conversions"] ?? 0);
-      aggregatedMetrics.all_conversions_value += Number(row["metrics.all_conversions_value"] ?? 0);
-      aggregatedMetrics.view_through_conversions += Number(
-        row["metrics.view_through_conversions"] ?? 0,
-      );
-      aggregatedMetrics.interactions += Number(row["metrics.interactions"] ?? 0);
-      aggregatedMetrics.engagements += Number(row["metrics.engagements"] ?? 0);
-      aggregatedMetrics.invalid_clicks += Number(row["metrics.invalid_clicks"] ?? 0);
-    }
-
-    // Calculate derived metrics from aggregated totals
-    const { impressions, clicks, conversions, cost_micros } = aggregatedMetrics;
-    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-    const average_cpc = clicks > 0 ? cost_micros / clicks : 0;
-    const average_cpm = impressions > 0 ? (cost_micros / impressions) * 1000 : 0;
-    const cost_per_conversion = conversions > 0 ? cost_micros / conversions : 0;
-    const conversion_rate = clicks > 0 ? (conversions / clicks) * 100 : 0;
-    const interaction_rate =
-      impressions > 0 ? (aggregatedMetrics.interactions / impressions) * 100 : 0;
-    const engagement_rate =
-      impressions > 0 ? (aggregatedMetrics.engagements / impressions) * 100 : 0;
-    const invalid_click_rate = clicks > 0 ? (aggregatedMetrics.invalid_clicks / clicks) * 100 : 0;
-
-    return {
-      campaign_id: String(meta["campaign.id"] ?? campaignId),
-      campaign_name: String(meta["campaign.name"] ?? ""),
-      status: (meta["campaign.status"] as Campaign["status"]) ?? "UNKNOWN",
-      bidding_strategy_type: meta[
-        "campaign.bidding_strategy_type"
-      ] as Campaign["bidding_strategy_type"],
-      optimization_score: meta["campaign.optimization_score"] as number | undefined,
-      start_date: meta["campaign.start_date"] as string | undefined,
-      end_date: meta["campaign.end_date"] as string | undefined,
-      budget_amount_micros: Number(meta["campaign_budget.amount_micros"] ?? 0),
-      impressions,
-      clicks,
-      cost_micros,
-      conversions,
-      ctr,
-      average_cpc,
-      conversions_value: aggregatedMetrics.conversions_value,
-      cost_per_conversion,
-      conversion_rate,
-      all_conversions: aggregatedMetrics.all_conversions,
-      view_through_conversions: aggregatedMetrics.view_through_conversions,
-      search_impression_share: undefined, // Not available with date aggregation
-      search_budget_lost_impression_share: undefined,
-      search_rank_lost_impression_share: undefined,
-      metrics: {
+      const {
         impressions,
         clicks,
         cost_micros,
+        conversions,
         ctr,
         average_cpc,
         average_cpm,
-        conversions,
-        conversions_value: aggregatedMetrics.conversions_value,
         cost_per_conversion,
         conversion_rate,
-        all_conversions: aggregatedMetrics.all_conversions,
-        all_conversions_value: aggregatedMetrics.all_conversions_value,
-        view_through_conversions: aggregatedMetrics.view_through_conversions,
+      } = response;
+
+      // Calculate additional rates
+      const interaction_rate = impressions > 0 ? (response.interactions / impressions) * 100 : 0;
+      const engagement_rate = impressions > 0 ? (response.engagements / impressions) * 100 : 0;
+      const invalid_click_rate = clicks > 0 ? (response.invalid_clicks / clicks) * 100 : 0;
+
+      return {
+        campaign_id: response.campaign_id,
+        campaign_name: response.campaign_name,
+        status: response.status as Campaign["status"],
+        bidding_strategy_type: response.bidding_strategy_type as Campaign["bidding_strategy_type"],
+        optimization_score: response.optimization_score ?? undefined,
+        start_date: response.start_date ?? undefined,
+        end_date: response.end_date ?? undefined,
+        budget_amount_micros: response.budget_amount_micros,
+        impressions,
+        clicks,
+        cost_micros,
+        conversions,
+        ctr,
+        average_cpc,
+        conversions_value: response.conversions_value,
+        cost_per_conversion,
+        conversion_rate,
+        all_conversions: response.all_conversions,
+        view_through_conversions: response.view_through_conversions,
         search_impression_share: undefined,
         search_budget_lost_impression_share: undefined,
         search_rank_lost_impression_share: undefined,
-        search_absolute_top_impression_share: undefined,
-        search_top_impression_share: undefined,
-        content_impression_share: undefined,
-        interactions: aggregatedMetrics.interactions,
-        interaction_rate,
-        engagements: aggregatedMetrics.engagements,
-        engagement_rate,
-        invalid_clicks: aggregatedMetrics.invalid_clicks,
-        invalid_click_rate,
-      },
-      settings: {
-        bidding_strategy_type:
-          (meta[
-            "campaign.bidding_strategy_type"
-          ] as CampaignDetail["settings"]["bidding_strategy_type"]) ?? "UNSPECIFIED",
-        start_date: meta["campaign.start_date"] as string | undefined,
-        end_date: meta["campaign.end_date"] as string | undefined,
-        budget_micros: Number(meta["campaign_budget.amount_micros"] ?? 0),
-      },
-    };
+        metrics: {
+          impressions,
+          clicks,
+          cost_micros,
+          ctr,
+          average_cpc,
+          average_cpm,
+          conversions,
+          conversions_value: response.conversions_value,
+          cost_per_conversion,
+          conversion_rate,
+          all_conversions: response.all_conversions,
+          all_conversions_value: response.all_conversions_value,
+          view_through_conversions: response.view_through_conversions,
+          search_impression_share: undefined,
+          search_budget_lost_impression_share: undefined,
+          search_rank_lost_impression_share: undefined,
+          search_absolute_top_impression_share: undefined,
+          search_top_impression_share: undefined,
+          content_impression_share: undefined,
+          interactions: response.interactions,
+          interaction_rate,
+          engagements: response.engagements,
+          engagement_rate,
+          invalid_clicks: response.invalid_clicks,
+          invalid_click_rate,
+        },
+        settings: {
+          bidding_strategy_type:
+            (response.bidding_strategy_type as CampaignDetail["settings"]["bidding_strategy_type"]) ??
+            "UNSPECIFIED",
+          start_date: response.start_date ?? undefined,
+          end_date: response.end_date ?? undefined,
+          budget_micros: response.budget_amount_micros,
+        },
+      };
+    } catch {
+      return null;
+    }
   },
 
   /**
