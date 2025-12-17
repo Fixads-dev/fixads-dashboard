@@ -23,6 +23,7 @@ export const ROUTES = {
   CALLBACK: "/callback",
   ACCOUNTS: "/accounts",
   CAMPAIGNS: "/campaigns",
+  RECOMMENDATIONS: "/recommendations",
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
   SETTINGS: "/settings",

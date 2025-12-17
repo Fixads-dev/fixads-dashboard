@@ -4,6 +4,7 @@ import {
   Building2,
   ChevronUp,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   Megaphone,
   Settings,
@@ -44,6 +45,7 @@ const navigation = [
       { name: "Dashboard", href: ROUTES.HOME, icon: LayoutDashboard },
       { name: "Accounts", href: ROUTES.ACCOUNTS, icon: Building2 },
       { name: "Campaigns", href: ROUTES.CAMPAIGNS, icon: Megaphone },
+      { name: "Recommendations", href: ROUTES.RECOMMENDATIONS, icon: Lightbulb },
     ],
   },
   {
