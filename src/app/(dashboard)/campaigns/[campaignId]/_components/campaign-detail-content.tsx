@@ -18,11 +18,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { ImpressionShareChart, KPICard, MetricsLineChart } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAssetGroups,
@@ -33,6 +41,14 @@ import {
 } from "@/features/campaigns";
 import type { AssetPerformance, CampaignStatus, TextAsset } from "@/features/campaigns/types";
 import { formatCompact, formatCurrency, formatPercent } from "@/shared/lib/format";
+
+const DATE_RANGE_OPTIONS = [
+  { value: 7, label: "Last 7 days" },
+  { value: 14, label: "Last 14 days" },
+  { value: 30, label: "Last 30 days" },
+  { value: 60, label: "Last 60 days" },
+  { value: 90, label: "Last 90 days" },
+] as const;
 
 /** Convert cost in micros to dollars */
 const microsToDollars = (micros: number) => micros / 1_000_000;
@@ -92,6 +108,7 @@ export function CampaignDetailContent() {
   const searchParams = useSearchParams();
   const campaignId = params.campaignId as string;
   const accountId = searchParams.get("account") ?? "";
+  const [dateRangeDays, setDateRangeDays] = useState<number>(30);
 
   // Fetch all data
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(
@@ -101,7 +118,11 @@ export function CampaignDetailContent() {
     accountId,
     campaignId,
   );
-  const { data: dailyMetrics, isLoading: dailyLoading } = useDailyMetrics(accountId, campaignId);
+  const { data: dailyMetrics, isLoading: dailyLoading } = useDailyMetrics(
+    accountId,
+    campaignId,
+    dateRangeDays,
+  );
   const { data: assetGroups, isLoading: assetGroupsLoading } = useAssetGroups(
     accountId,
     campaignId,
@@ -291,19 +312,59 @@ export function CampaignDetailContent() {
           </div>
 
           {/* Performance Chart */}
-          {dailyMetrics && dailyMetrics.length > 0 && (
-            <MetricsLineChart
-              data={dailyMetrics}
-              title="Performance Over Time"
-              description="Last 30 days"
-              metrics={[
-                { key: "impressions", label: "Impressions", color: "#3b82f6" },
-                { key: "clicks", label: "Clicks", color: "#22c55e" },
-                { key: "conversions", label: "Conversions", color: "#f59e0b", yAxisId: "right" },
-              ]}
-              height={300}
-            />
-          )}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Performance Over Time</h3>
+              <Select
+                value={String(dateRangeDays)}
+                onValueChange={(value) => setDateRangeDays(Number(value))}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_RANGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {dailyLoading && (
+              <Card>
+                <CardContent className="flex items-center justify-center p-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </CardContent>
+              </Card>
+            )}
+            {!dailyLoading && dailyMetrics && dailyMetrics.length > 0 && (
+              <MetricsLineChart
+                data={dailyMetrics}
+                title="Performance Over Time"
+                description={DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeDays)?.label ?? ""}
+                metrics={[
+                  { key: "impressions", label: "Impressions", color: "#3b82f6" },
+                  { key: "clicks", label: "Clicks", color: "#22c55e" },
+                  { key: "conversions", label: "Conversions", color: "#f59e0b", yAxisId: "right" },
+                ]}
+                height={300}
+              />
+            )}
+            {!dailyLoading && (!dailyMetrics || dailyMetrics.length === 0) && (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Activity className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">
+                    No performance data available for the selected period
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Try selecting a longer date range
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {/* Impression Share */}
           {(campaign.search_impression_share !== undefined ||
@@ -353,13 +414,41 @@ export function CampaignDetailContent() {
 
         {/* Performance Tab */}
         <TabsContent value="performance" className="space-y-6">
+          {/* Date Range Selector */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Detailed Performance</h3>
+            <Select
+              value={String(dateRangeDays)}
+              onValueChange={(value) => setDateRangeDays(Number(value))}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select range" />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_RANGE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={String(option.value)}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {dailyLoading && (
+            <Card>
+              <CardContent className="flex items-center justify-center p-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Cost Analysis */}
-          {dailyMetrics && dailyMetrics.length > 0 && (
+          {!dailyLoading && dailyMetrics && dailyMetrics.length > 0 && (
             <>
               <MetricsLineChart
                 data={dailyMetrics}
                 title="Cost Analysis"
-                description="Daily spending and CPC"
+                description={`Daily spending and CPC - ${DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeDays)?.label ?? ""}`}
                 metrics={[
                   {
                     key: "cost_micros",
@@ -381,7 +470,7 @@ export function CampaignDetailContent() {
               <MetricsLineChart
                 data={dailyMetrics}
                 title="Conversion Performance"
-                description="Daily conversions and CTR"
+                description={`Daily conversions and CTR - ${DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeDays)?.label ?? ""}`}
                 metrics={[
                   { key: "conversions", label: "Conversions", color: "#22c55e" },
                   {
@@ -397,19 +486,16 @@ export function CampaignDetailContent() {
             </>
           )}
 
-          {dailyLoading && (
-            <Card>
-              <CardContent className="flex items-center justify-center p-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </CardContent>
-            </Card>
-          )}
-
           {!dailyLoading && (!dailyMetrics || dailyMetrics.length === 0) && (
             <Card>
               <CardContent className="p-8 text-center">
                 <Activity className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No performance data available yet</p>
+                <p className="text-muted-foreground">
+                  No performance data available for the selected period
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Try selecting a longer date range
+                </p>
               </CardContent>
             </Card>
           )}

@@ -185,12 +185,31 @@ export const campaignsApi = {
   /**
    * Get daily metrics for time series charts
    * POST /google-ads/query?account_id=UUID
+   *
+   * GAQL supports LAST_7_DAYS, LAST_14_DAYS, LAST_30_DAYS, LAST_90_DAYS
+   * For other values, use explicit date range with BETWEEN
    */
   getDailyMetrics: async (
     accountId: string,
     campaignId: string,
     days: number = 30,
   ): Promise<DailyMetrics[]> => {
+    // GAQL only supports specific LAST_X_DAYS values
+    const validDuringValues = [7, 14, 30, 90];
+    let dateFilter: string;
+
+    if (validDuringValues.includes(days)) {
+      dateFilter = `segments.date DURING LAST_${days}_DAYS`;
+    } else {
+      // Calculate explicit date range for other values (e.g., 60 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const formatDate = (d: Date) => d.toISOString().split("T")[0];
+      dateFilter = `segments.date BETWEEN '${formatDate(startDate)}' AND '${formatDate(endDate)}'`;
+    }
+
     const query = `
       SELECT
         segments.date,
@@ -203,7 +222,7 @@ export const campaignsApi = {
       FROM campaign
       WHERE campaign.advertising_channel_type = 'PERFORMANCE_MAX'
         AND campaign.id = ${campaignId}
-        AND segments.date DURING LAST_${days}_DAYS
+        AND ${dateFilter}
       ORDER BY segments.date ASC
     `;
     const result = await apiMethods.post<{ rows: Record<string, unknown>[] }>(

@@ -49,8 +49,8 @@ export function DashboardContent() {
   const { data: accounts, isLoading: isLoadingAccounts } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
-  // Auto-select first account if none selected
-  const currentAccountId = selectedAccountId ?? accounts?.[0]?.customer_id ?? null;
+  // Auto-select first account if none selected (use internal UUID, not customer_id)
+  const currentAccountId = selectedAccountId ?? accounts?.[0]?.id ?? null;
   const hasAccounts = accounts && accounts.length > 0;
 
   return (
@@ -79,7 +79,7 @@ export function DashboardContent() {
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
-                <SelectItem key={account.customer_id} value={account.customer_id}>
+                <SelectItem key={account.id} value={account.id}>
                   {account.descriptive_name || account.customer_id}
                 </SelectItem>
               ))}
