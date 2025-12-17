@@ -3,12 +3,15 @@
 import {
   Building2,
   ChevronUp,
+  History,
   LayoutDashboard,
   Lightbulb,
   LogOut,
   Megaphone,
+  Search,
   Settings,
   Sparkles,
+  Target,
   Type,
   User2,
 } from "lucide-react";
@@ -46,6 +49,14 @@ const navigation = [
       { name: "Accounts", href: ROUTES.ACCOUNTS, icon: Building2 },
       { name: "Campaigns", href: ROUTES.CAMPAIGNS, icon: Megaphone },
       { name: "Recommendations", href: ROUTES.RECOMMENDATIONS, icon: Lightbulb },
+    ],
+  },
+  {
+    label: "Reports",
+    items: [
+      { name: "Search Terms", href: ROUTES.SEARCH_TERMS, icon: Search },
+      { name: "Conversions", href: ROUTES.CONVERSIONS, icon: Target },
+      { name: "Change History", href: ROUTES.CHANGE_HISTORY, icon: History },
     ],
   },
   {

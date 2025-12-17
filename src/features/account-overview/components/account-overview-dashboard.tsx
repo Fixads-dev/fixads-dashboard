@@ -1,0 +1,308 @@
+"use client";
+
+import {
+  AlertCircle,
+  DollarSign,
+  Eye,
+  MousePointer,
+  RefreshCw,
+  ShoppingCart,
+  TrendingUp,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAccountOverview } from "../hooks/use-account-overview";
+import type { AccountOverviewFilters, TopCampaign } from "../types";
+import { formatCost, formatNumber, getCampaignTypeLabel } from "../types";
+
+interface AccountOverviewDashboardProps {
+  filters: AccountOverviewFilters;
+}
+
+// KPI Card component
+function KPICard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Top campaigns table
+function TopCampaignsTable({
+  campaigns,
+  currencyCode,
+}: {
+  campaigns: TopCampaign[];
+  currencyCode?: string;
+}) {
+  if (!campaigns.length) {
+    return <p className="text-center text-muted-foreground py-8">No campaigns with conversions</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {campaigns.map((campaign) => (
+        <div
+          key={campaign.campaign_id}
+          className="flex items-center justify-between py-2 border-b last:border-0"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{campaign.campaign_name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">
+                {getCampaignTypeLabel(campaign.campaign_type)}
+              </Badge>
+              <Badge
+                variant={campaign.status === "ENABLED" ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {campaign.status}
+              </Badge>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-medium">{campaign.conversions.toFixed(1)} conv.</p>
+            <p className="text-xs text-muted-foreground">
+              {formatCost(campaign.cost_micros, currencyCode)}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Campaign type distribution
+function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
+  if (total === 0) {
+    return <p className="text-center text-muted-foreground py-4">No campaigns</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {Object.entries(counts).map(([type, count]) => (
+        <div key={type} className="flex items-center justify-between">
+          <span className="text-sm">{getCampaignTypeLabel(type)}</span>
+          <div className="flex items-center gap-2">
+            <div className="w-24 bg-secondary rounded-full h-2">
+              <div
+                className="bg-primary rounded-full h-2"
+                style={{ width: `${(count / total) * 100}%` }}
+              />
+            </div>
+            <span className="text-sm font-medium w-8 text-right">{count}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Loading skeleton
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {["sk-1", "sk-2", "sk-3", "sk-4"].map((id) => (
+          <Card key={id}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-24 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Bottom section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {["sk-5", "sk-6", "sk-7"].map((id) => (
+                <Skeleton key={id} className="h-16 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {["sk-8", "sk-9", "sk-10"].map((id) => (
+                <Skeleton key={id} className="h-6 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardProps) {
+  const { data, isLoading, error, refetch, isFetching } = useAccountOverview(filters);
+
+  // Loading state
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Failed to load account overview</h3>
+        <p className="text-muted-foreground mb-4">
+          {error instanceof Error ? error.message : "An unexpected error occurred"}
+        </p>
+        <Button onClick={() => refetch()} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const { metrics } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Refresh button */}
+      <div className="flex justify-end">
+        <Button onClick={() => refetch()} variant="ghost" size="sm" disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          title="Total Spend"
+          value={formatCost(metrics.cost_micros, data.currency_code || undefined)}
+          subtitle={`${data.date_range.replace(/_/g, " ").toLowerCase()}`}
+          icon={DollarSign}
+        />
+        <KPICard
+          title="Impressions"
+          value={formatNumber(metrics.impressions)}
+          subtitle={`${metrics.ctr.toFixed(2)}% CTR`}
+          icon={Eye}
+        />
+        <KPICard
+          title="Clicks"
+          value={formatNumber(metrics.clicks)}
+          subtitle={`${formatCost(metrics.average_cpc_micros, data.currency_code || undefined)} avg CPC`}
+          icon={MousePointer}
+        />
+        <KPICard
+          title="Conversions"
+          value={metrics.conversions.toFixed(1)}
+          subtitle={
+            metrics.cost_per_conversion_micros > 0
+              ? `${formatCost(metrics.cost_per_conversion_micros, data.currency_code || undefined)} / conv`
+              : "No conversions"
+          }
+          icon={ShoppingCart}
+        />
+      </div>
+
+      {/* Secondary metrics */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Conversion Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCost(metrics.conversions_value * 1_000_000, data.currency_code || undefined)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">ROAS</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              {metrics.roas > 0 ? `${metrics.roas.toFixed(2)}x` : "N/A"}
+              {metrics.roas > 1 && <TrendingUp className="h-5 w-5 text-green-500" />}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.total_campaigns}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Top Campaigns</CardTitle>
+            <CardDescription>By conversion count</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TopCampaignsTable
+              campaigns={data.top_campaigns}
+              currencyCode={data.currency_code || undefined}
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Campaign Distribution</CardTitle>
+            <CardDescription>By campaign type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CampaignTypeDistribution counts={data.campaign_type_counts} />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
