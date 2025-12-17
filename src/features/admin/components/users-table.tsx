@@ -45,6 +45,8 @@ function formatDate(dateString: string | null): string {
   }
 }
 
+const SKELETON_ROWS = ["row-1", "row-2", "row-3", "row-4", "row-5"] as const;
+
 function UsersTableSkeleton() {
   return (
     <Table>
@@ -60,8 +62,8 @@ function UsersTableSkeleton() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <TableRow key={i}>
+        {SKELETON_ROWS.map((id) => (
+          <TableRow key={id}>
             <TableCell>
               <Skeleton className="h-4 w-40" />
             </TableCell>
