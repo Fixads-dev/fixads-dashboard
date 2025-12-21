@@ -3,7 +3,7 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type AccessibleCustomer,
@@ -36,6 +36,88 @@ export function ConnectCallbackContent() {
   const getAccessibleCustomers = useGetAccessibleCustomers();
   const connectAccount = useConnectAccount();
 
+  // Use refs for mutation functions to avoid stale closures in useEffect
+  const exchangeTokensRef = useRef(exchangeTokens);
+  const getAccessibleCustomersRef = useRef(getAccessibleCustomers);
+  const connectAccountRef = useRef(connectAccount);
+
+  // Keep refs updated
+  exchangeTokensRef.current = exchangeTokens;
+  getAccessibleCustomersRef.current = getAccessibleCustomers;
+  connectAccountRef.current = connectAccount;
+
+  // Memoized process function to handle the OAuth flow
+  const processOAuthCallback = useCallback(
+    (code: string, state: string) => {
+      const redirectUri = `${window.location.origin}/accounts/connect/callback`;
+
+      // Step 1: Exchange code for tokens
+      setStep("exchanging");
+      exchangeTokensRef.current.mutate(
+        { code, state, redirect_uri: redirectUri },
+        {
+          onSuccess: (tokenData) => {
+            setRefreshToken(tokenData.refresh_token);
+
+            // Step 2: Fetch accessible customers
+            setStep("fetching_customers");
+            getAccessibleCustomersRef.current.mutate(tokenData.refresh_token, {
+              onSuccess: (customerData) => {
+                const fetchedCustomers = customerData.customers;
+
+                if (fetchedCustomers.length === 0) {
+                  setStep("error");
+                  setErrorMessage(
+                    "No Google Ads accounts found. Please ensure you have access to at least one Google Ads account.",
+                  );
+                  return;
+                }
+
+                // If only one regular account, auto-connect it
+                const regularAccounts = fetchedCustomers.filter((c) => !c.is_manager);
+                if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
+                  // Single account, auto-connect
+                  const customer = fetchedCustomers[0];
+                  setStep("connecting");
+                  connectAccountRef.current.mutate(
+                    {
+                      customer_id: customer.customer_id,
+                      refresh_token: tokenData.refresh_token,
+                      login_customer_id: customer.is_manager ? customer.customer_id : undefined,
+                    },
+                    {
+                      onSuccess: () => {
+                        setStep("success");
+                        router.replace(ROUTES.ACCOUNTS);
+                      },
+                      onError: (error) => {
+                        setStep("error");
+                        setErrorMessage(error.message || "Failed to connect account");
+                      },
+                    },
+                  );
+                } else {
+                  // Multiple accounts or MCC detected - show selection UI
+                  setCustomers(fetchedCustomers);
+                  setStep("selecting");
+                }
+              },
+              onError: (error) => {
+                setStep("error");
+                setErrorMessage(error.message || "Failed to fetch accessible accounts");
+              },
+            });
+          },
+          onError: (error) => {
+            setStep("error");
+            setErrorMessage(error.message || "Failed to exchange authorization code");
+          },
+        },
+      );
+    },
+    [router],
+  );
+
   useEffect(() => {
     if (hasProcessed.current) return;
 
@@ -54,72 +136,8 @@ export function ConnectCallbackContent() {
     }
 
     hasProcessed.current = true;
-    const redirectUri = `${window.location.origin}/accounts/connect/callback`;
-
-    // Step 1: Exchange code for tokens
-    setStep("exchanging");
-    exchangeTokens.mutate(
-      { code, state, redirect_uri: redirectUri },
-      {
-        onSuccess: (tokenData) => {
-          setRefreshToken(tokenData.refresh_token);
-
-          // Step 2: Fetch accessible customers
-          setStep("fetching_customers");
-          getAccessibleCustomers.mutate(tokenData.refresh_token, {
-            onSuccess: (customerData) => {
-              const fetchedCustomers = customerData.customers;
-
-              if (fetchedCustomers.length === 0) {
-                setStep("error");
-                setErrorMessage(
-                  "No Google Ads accounts found. Please ensure you have access to at least one Google Ads account.",
-                );
-                return;
-              }
-
-              // If only one regular account, auto-connect it
-              const regularAccounts = fetchedCustomers.filter((c) => !c.is_manager);
-              if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
-                // Single account, auto-connect
-                const customer = fetchedCustomers[0];
-                setStep("connecting");
-                connectAccount.mutate(
-                  {
-                    customer_id: customer.customer_id,
-                    refresh_token: tokenData.refresh_token,
-                    login_customer_id: customer.is_manager ? customer.customer_id : undefined,
-                  },
-                  {
-                    onSuccess: () => {
-                      setStep("success");
-                      router.replace(ROUTES.ACCOUNTS);
-                    },
-                    onError: (error) => {
-                      setStep("error");
-                      setErrorMessage(error.message || "Failed to connect account");
-                    },
-                  },
-                );
-              } else {
-                // Multiple accounts or MCC detected - show selection UI
-                setCustomers(fetchedCustomers);
-                setStep("selecting");
-              }
-            },
-            onError: (error) => {
-              setStep("error");
-              setErrorMessage(error.message || "Failed to fetch accessible accounts");
-            },
-          });
-        },
-        onError: (error) => {
-          setStep("error");
-          setErrorMessage(error.message || "Failed to exchange authorization code");
-        },
-      },
-    );
-  }, [searchParams, router, exchangeTokens, getAccessibleCustomers, connectAccount]);
+    processOAuthCallback(code, state);
+  }, [searchParams, router, processOAuthCallback]);
 
   const handleConnectAccounts = async (
     accounts: Array<{ customer_id: string; login_customer_id?: string }>,

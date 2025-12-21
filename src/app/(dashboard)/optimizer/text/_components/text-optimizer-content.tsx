@@ -1,11 +1,23 @@
 "use client";
 
-import { AlertCircle, Globe, Loader2, Play, Sparkles, Type } from "lucide-react";
+import { Globe, Loader2, Play, Sparkles, Type } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAccounts } from "@/features/accounts";
+import { useAssetGroups, useCampaigns } from "@/features/campaigns";
+import {
+  type AssetToRemove,
+  type TextOptimizerResponse,
+  useApplyTextChanges,
+  useTextOptimizerAnalyze,
+} from "@/features/optimizer";
+import { EmptyState } from "@/shared/components";
+import { BadAssetsCard, CampaignSelector } from "../../_components";
+import { AnalysisSummary, SuggestedAssetsCard } from "./sub-components";
 
 const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English", native: "English" },
@@ -14,36 +26,24 @@ const SUPPORTED_LANGUAGES = [
   { code: "ru", label: "Russian", native: "Русский" },
 ] as const;
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useAccounts } from "@/features/accounts";
-import { useAssetGroups, useCampaigns } from "@/features/campaigns";
-import {
-  type AssetToRemove,
-  BadAssetChip,
-  type TextOptimizerResponse,
-  useApplyTextChanges,
-  useTextOptimizerAnalyze,
-} from "@/features/optimizer";
-import { EmptyState } from "@/shared/components";
-import { formatCurrency } from "@/shared/lib/format";
+// Helper to get removal ID
+const getRemovalId = (asset: AssetToRemove): string =>
+  asset.asset_group_asset_resource_name || asset.asset_id;
 
 export function TextOptimizerContent() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
-  const [productDescription, setProductDescription] = useState<string>("");
+  // Selection state
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState("");
+  const [productDescription, setProductDescription] = useState("");
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
+
+  // Results state
   const [analysisResult, setAnalysisResult] = useState<TextOptimizerResponse | null>(null);
   const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
   const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
 
+  // Data fetching
   const { data: accounts, isPending: isLoadingAccounts, isError: isAccountsError } = useAccounts();
   const {
     data: campaigns,
@@ -56,9 +56,11 @@ export function TextOptimizerContent() {
     isError: isAssetGroupsError,
   } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
+  // Mutations
   const { mutate: analyze, isPending: isAnalyzing } = useTextOptimizerAnalyze();
   const { mutate: applyChanges, isPending: isApplying } = useApplyTextChanges();
 
+  // Handlers
   const handleAnalyze = () => {
     if (
       !selectedAccountId ||
@@ -89,25 +91,13 @@ export function TextOptimizerContent() {
     );
   };
 
-  const toggleLanguage = (code: string) => {
-    setSelectedLanguages((prev) => {
-      if (prev.includes(code)) {
-        // Don't allow removing the last language
-        if (prev.length === 1) return prev;
-        return prev.filter((c) => c !== code);
-      }
-      return [...prev, code];
-    });
-  };
-
-  const getLanguageLabel = (code: string) => {
-    const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
-    return lang ? lang.native : code.toUpperCase();
-  };
-
   const handleApply = () => {
-    if (!selectedAccountId || !analysisResult) return;
-    if (selectedToRemove.size === 0 && selectedToAdd.size === 0) return;
+    if (
+      !selectedAccountId ||
+      !analysisResult ||
+      (selectedToRemove.size === 0 && selectedToAdd.size === 0)
+    )
+      return;
 
     const assetsToAdd = analysisResult.assets_to_add
       .filter((_, i) => selectedToAdd.has(i))
@@ -134,19 +124,20 @@ export function TextOptimizerContent() {
     );
   };
 
-  // Get the identifier used for pausing assets (prefer asset_group_asset_resource_name)
-  const getRemovalId = (asset: AssetToRemove): string =>
-    asset.asset_group_asset_resource_name || asset.asset_id;
+  const toggleLanguage = (code: string) => {
+    setSelectedLanguages((prev) => {
+      if (prev.includes(code)) {
+        return prev.length === 1 ? prev : prev.filter((c) => c !== code);
+      }
+      return [...prev, code];
+    });
+  };
 
   const toggleRemove = (asset: AssetToRemove) => {
     const id = getRemovalId(asset);
     setSelectedToRemove((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -154,11 +145,7 @@ export function TextOptimizerContent() {
   const toggleAdd = (index: number) => {
     setSelectedToAdd((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
+      next.has(index) ? next.delete(index) : next.add(index);
       return next;
     });
   };
@@ -171,17 +158,14 @@ export function TextOptimizerContent() {
 
   const selectAllCompliantSuggestions = () => {
     if (analysisResult?.assets_to_add) {
-      const compliantIndices = analysisResult.assets_to_add
+      const indices = analysisResult.assets_to_add
         .map((a, i) => (a.compliance_passed ? i : -1))
         .filter((i) => i !== -1);
-      setSelectedToAdd(new Set(compliantIndices));
+      setSelectedToAdd(new Set(indices));
     }
   };
 
-  // Helper to get display name for account
-  const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
-    acc.descriptive_name ?? acc.customer_id;
-
+  // Computed
   const isReady =
     selectedAccountId &&
     selectedCampaignId &&
@@ -190,6 +174,10 @@ export function TextOptimizerContent() {
     selectedLanguages.length > 0;
   const hasResults = analysisResult !== null;
   const totalChanges = selectedToRemove.size + selectedToAdd.size;
+  const noChangesFound =
+    hasResults &&
+    analysisResult.assets_to_remove.length === 0 &&
+    analysisResult.assets_to_add.length === 0;
 
   return (
     <div className="space-y-6">
@@ -209,104 +197,23 @@ export function TextOptimizerContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <Select
-                value={selectedAccountId}
-                onValueChange={setSelectedAccountId}
-                disabled={isLoadingAccounts}
-              >
-                <SelectTrigger>
-                  {isLoadingAccounts ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading accounts...
-                    </span>
-                  ) : isAccountsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select account" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts?.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {getAccountDisplayName(account)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Select
-                value={selectedCampaignId}
-                onValueChange={setSelectedCampaignId}
-                disabled={!selectedAccountId || isLoadingCampaigns}
-              >
-                <SelectTrigger>
-                  {selectedAccountId && isLoadingCampaigns ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading campaigns...
-                    </span>
-                  ) : selectedAccountId && isCampaignsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select campaign" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {campaigns
-                    ?.filter((campaign) => campaign.campaign_id)
-                    .map((campaign) => (
-                      <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                        {campaign.campaign_name || campaign.campaign_id}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Select
-                value={selectedAssetGroupId}
-                onValueChange={setSelectedAssetGroupId}
-                disabled={!selectedCampaignId || isLoadingAssetGroups}
-              >
-                <SelectTrigger>
-                  {selectedCampaignId && isLoadingAssetGroups ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading asset groups...
-                    </span>
-                  ) : selectedCampaignId && isAssetGroupsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select asset group" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {assetGroups
-                    ?.filter((group) => group.asset_group_id)
-                    .map((group) => (
-                      <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
-                        {group.asset_group_name || group.asset_group_id}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CampaignSelector
+            accounts={accounts}
+            campaigns={campaigns}
+            assetGroups={assetGroups}
+            selectedAccountId={selectedAccountId}
+            selectedCampaignId={selectedCampaignId}
+            selectedAssetGroupId={selectedAssetGroupId}
+            onAccountChange={setSelectedAccountId}
+            onCampaignChange={setSelectedCampaignId}
+            onAssetGroupChange={setSelectedAssetGroupId}
+            isLoadingAccounts={isLoadingAccounts}
+            isLoadingCampaigns={isLoadingCampaigns}
+            isLoadingAssetGroups={isLoadingAssetGroups}
+            isAccountsError={isAccountsError}
+            isCampaignsError={isCampaignsError}
+            isAssetGroupsError={isAssetGroupsError}
+          />
 
           <div>
             <label htmlFor="product-description" className="text-sm font-medium">
@@ -316,42 +223,18 @@ export function TextOptimizerContent() {
               id="product-description"
               placeholder="Describe your product or service for AI-powered suggestions..."
               value={productDescription}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setProductDescription(e.target.value)
-              }
+              onChange={(e) => setProductDescription(e.target.value)}
               className="mt-1.5"
               rows={3}
               disabled={!selectedAssetGroupId}
             />
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Output Languages</span>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <div key={lang.code} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`lang-${lang.code}`}
-                    checked={selectedLanguages.includes(lang.code)}
-                    onCheckedChange={() => toggleLanguage(lang.code)}
-                    disabled={!selectedAssetGroupId}
-                  />
-                  <Label
-                    htmlFor={`lang-${lang.code}`}
-                    className={`text-sm ${selectedAssetGroupId ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
-                  >
-                    {lang.native}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              Select one or more languages. Assets will be generated for each selected language.
-            </p>
-          </div>
+          <LanguageSelector
+            selectedLanguages={selectedLanguages}
+            onToggle={toggleLanguage}
+            disabled={!selectedAssetGroupId}
+          />
 
           <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing}>
             {isAnalyzing ? (
@@ -371,161 +254,25 @@ export function TextOptimizerContent() {
 
       {hasResults && (
         <div className="space-y-6">
-          {/* Summary Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analysis Summary</CardTitle>
-              <CardDescription>
-                Campaign: {analysisResult.campaign_name} / {analysisResult.asset_group_name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Total Analyzed</p>
-                  <p className="text-lg font-semibold">
-                    {analysisResult.summary.total_assets_analyzed}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Bad Assets</p>
-                  <p className="text-lg font-semibold text-destructive">
-                    {analysisResult.assets_to_remove.length}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Suggestions</p>
-                  <p className="text-lg font-semibold">{analysisResult.assets_to_add.length}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Compliant</p>
-                  <p className="text-lg font-semibold text-green-600">
-                    {analysisResult.summary.compliance_passed}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <AnalysisSummary result={analysisResult} />
 
-          {/* Bad Assets to Remove */}
-          {analysisResult.assets_to_remove.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-destructive">
-                      Bad Assets ({analysisResult.assets_to_remove.length})
-                    </CardTitle>
-                    <CardDescription>Select assets to remove</CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllBadAssets}
-                    disabled={isApplying}
-                  >
-                    Select All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analysisResult.assets_to_remove.map((asset: AssetToRemove) => (
-                  <div
-                    key={getRemovalId(asset)}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedToRemove.has(getRemovalId(asset))}
-                      onCheckedChange={() => toggleRemove(asset)}
-                      disabled={isApplying}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <BadAssetChip classification={asset.reason_code} />
-                        <span className="text-xs text-muted-foreground">
-                          Score: {asset.severity_score}
-                        </span>
-                      </div>
-                      <p className="text-sm">{asset.text}</p>
-                      {asset.metrics && (
-                        <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>Impressions: {asset.metrics.impressions ?? 0}</span>
-                          <span>Clicks: {asset.metrics.clicks ?? 0}</span>
-                          <span>
-                            Cost: {formatCurrency((asset.metrics.cost_micros ?? 0) / 1_000_000)}
-                          </span>
-                          <span>Conversions: {asset.metrics.conversions ?? 0}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <BadAssetsCard
+            assets={analysisResult.assets_to_remove}
+            selectedIds={selectedToRemove}
+            onToggle={toggleRemove}
+            onSelectAll={selectAllBadAssets}
+            isApplying={isApplying}
+            getRemovalId={getRemovalId}
+          />
 
-          {/* Suggested Assets to Add */}
-          {analysisResult.assets_to_add.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>
-                      Suggested Replacements ({analysisResult.assets_to_add.length})
-                    </CardTitle>
-                    <CardDescription>Select assets to add</CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllCompliantSuggestions}
-                    disabled={isApplying}
-                  >
-                    Select All Compliant
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analysisResult.assets_to_add.map((asset, index) => (
-                  <div
-                    key={`${asset.asset_type}-${index}`}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedToAdd.has(index)}
-                      onCheckedChange={() => toggleAdd(index)}
-                      disabled={!asset.compliance_passed || isApplying}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase">
-                          {asset.asset_type}
-                        </span>
-                        {asset.language && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                            {getLanguageLabel(asset.language)}
-                          </span>
-                        )}
-                        {asset.compliance_passed ? (
-                          <span className="text-xs text-green-600">Compliant</span>
-                        ) : (
-                          <span className="text-xs text-destructive">Non-compliant</span>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium">{asset.text}</p>
-                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
-                        <p className="text-xs text-destructive">
-                          Issues: {asset.compliance_issues.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <SuggestedAssetsCard
+            assets={analysisResult.assets_to_add}
+            selectedIndices={selectedToAdd}
+            onToggle={toggleAdd}
+            onSelectAll={selectAllCompliantSuggestions}
+            isApplying={isApplying}
+          />
 
-          {/* Apply Button */}
           <div className="flex justify-end">
             <Button onClick={handleApply} disabled={totalChanges === 0 || isApplying}>
               {isApplying ? (
@@ -539,15 +286,54 @@ export function TextOptimizerContent() {
         </div>
       )}
 
-      {hasResults &&
-        analysisResult.assets_to_remove.length === 0 &&
-        analysisResult.assets_to_add.length === 0 && (
-          <EmptyState
-            icon={Sparkles}
-            title="No bad assets found"
-            description="Your assets are performing well! No underperforming assets detected."
-          />
-        )}
+      {noChangesFound && (
+        <EmptyState
+          icon={Sparkles}
+          title="No bad assets found"
+          description="Your assets are performing well! No underperforming assets detected."
+        />
+      )}
+    </div>
+  );
+}
+
+// Sub-component for language selection
+function LanguageSelector({
+  selectedLanguages,
+  onToggle,
+  disabled,
+}: {
+  selectedLanguages: string[];
+  onToggle: (code: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Globe className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Output Languages</span>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {SUPPORTED_LANGUAGES.map((lang) => (
+          <div key={lang.code} className="flex items-center space-x-2">
+            <Checkbox
+              id={`lang-${lang.code}`}
+              checked={selectedLanguages.includes(lang.code)}
+              onCheckedChange={() => onToggle(lang.code)}
+              disabled={disabled}
+            />
+            <Label
+              htmlFor={`lang-${lang.code}`}
+              className={`text-sm ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+            >
+              {lang.native}
+            </Label>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1.5">
+        Select one or more languages. Assets will be generated for each selected language.
+      </p>
     </div>
   );
 }

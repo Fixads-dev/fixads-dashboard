@@ -28,6 +28,32 @@ type SortDirection = "asc" | "desc";
 // Static skeleton keys
 const SKELETON_ROWS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6", "sk-7", "sk-8"] as const;
 
+// Comparator for string values
+function compareStrings(a: string, b: string, direction: SortDirection): number {
+  return direction === "asc" ? a.localeCompare(b) : b.localeCompare(a);
+}
+
+// Comparator for numeric values
+function compareNumbers(a: number, b: number, direction: SortDirection): number {
+  return direction === "asc" ? a - b : b - a;
+}
+
+// Generic sort comparator
+function createComparator<T>(field: SortField, direction: SortDirection) {
+  return (a: T, b: T): number => {
+    const aValue = (a as Record<string, unknown>)[field];
+    const bValue = (b as Record<string, unknown>)[field];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      return compareStrings(aValue, bValue, direction);
+    }
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return compareNumbers(aValue, bValue, direction);
+    }
+    return 0;
+  };
+}
+
 export function SearchTermsTable({ filters }: SearchTermsTableProps) {
   const { data, isLoading, error, refetch, isFetching } = useSearchTerms(filters);
 
@@ -52,23 +78,8 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
       );
     }
 
-    // Apply sorting
-    return [...filtered].sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-      }
-
-      return 0;
-    });
+    // Apply sorting using extracted comparator
+    return [...filtered].sort(createComparator(sortField, sortDirection));
   }, [data?.search_terms, searchQuery, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {

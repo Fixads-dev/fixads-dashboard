@@ -168,86 +168,86 @@ function ImpactMetrics({ impact }: { impact: RecommendationImpact }) {
   );
 }
 
-function RecommendationDetails({
-  details,
-  type,
-}: {
-  details: Record<string, unknown>;
-  type: string;
-}) {
-  // Render based on recommendation type
-  if (type === "KEYWORD" && details.keyword) {
-    const kw = details.keyword as Record<string, unknown>;
-    const text = typeof kw.text === "string" ? kw.text : null;
-    const matchType = typeof kw.match_type === "string" ? kw.match_type : null;
-    const bidMicros = typeof kw.cpc_bid_micros === "number" ? kw.cpc_bid_micros : null;
-    return (
-      <div className="space-y-2 text-sm">
-        {text && (
-          <p>
-            <span className="text-muted-foreground">Keyword:</span>{" "}
-            <span className="font-mono bg-muted px-1 rounded">{text}</span>
-          </p>
-        )}
-        {matchType && (
-          <p>
-            <span className="text-muted-foreground">Match Type:</span> {matchType}
-          </p>
-        )}
-        {bidMicros && (
-          <p>
-            <span className="text-muted-foreground">Recommended Bid:</span> $
-            {(bidMicros / 1_000_000).toFixed(2)}
-          </p>
-        )}
-      </div>
-    );
-  }
+// Helper to format micros to dollars
+const formatMicros = (micros: number, suffix = "") =>
+  `$${(micros / 1_000_000).toFixed(2)}${suffix}`;
 
-  if (type.includes("BUDGET") && details.budget) {
-    const budget = details.budget as Record<string, unknown>;
-    const currentBudget =
-      typeof budget.current_budget_micros === "number" ? budget.current_budget_micros : null;
-    const recommendedBudget =
-      typeof budget.recommended_budget_micros === "number"
-        ? budget.recommended_budget_micros
-        : null;
-    return (
-      <div className="space-y-2 text-sm">
-        {currentBudget !== null && (
-          <p>
-            <span className="text-muted-foreground">Current Budget:</span> $
-            {(currentBudget / 1_000_000).toFixed(2)}/day
-          </p>
-        )}
-        {recommendedBudget !== null && (
-          <p>
-            <span className="text-muted-foreground">Recommended Budget:</span>{" "}
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              ${(recommendedBudget / 1_000_000).toFixed(2)}/day
-            </span>
-          </p>
-        )}
-      </div>
-    );
-  }
+// Keyword details renderer
+function KeywordDetails({ details }: { details: Record<string, unknown> }) {
+  const kw = details.keyword as Record<string, unknown>;
+  const text = typeof kw.text === "string" ? kw.text : null;
+  const matchType = typeof kw.match_type === "string" ? kw.match_type : null;
+  const bidMicros = typeof kw.cpc_bid_micros === "number" ? kw.cpc_bid_micros : null;
 
-  if (type.includes("TARGET_CPA") && details.target_cpa) {
-    const cpa = details.target_cpa as Record<string, unknown>;
-    const cpaMicros = typeof cpa.target_cpa_micros === "number" ? cpa.target_cpa_micros : null;
-    return (
-      <div className="space-y-2 text-sm">
-        {cpaMicros !== null && (
-          <p>
-            <span className="text-muted-foreground">Recommended Target CPA:</span>{" "}
-            <span className="font-semibold">${(cpaMicros / 1_000_000).toFixed(2)}</span>
-          </p>
-        )}
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-2 text-sm">
+      {text && (
+        <p>
+          <span className="text-muted-foreground">Keyword:</span>{" "}
+          <span className="font-mono bg-muted px-1 rounded">{text}</span>
+        </p>
+      )}
+      {matchType && (
+        <p>
+          <span className="text-muted-foreground">Match Type:</span> {matchType}
+        </p>
+      )}
+      {bidMicros && (
+        <p>
+          <span className="text-muted-foreground">Recommended Bid:</span> {formatMicros(bidMicros)}
+        </p>
+      )}
+    </div>
+  );
+}
 
-  // Generic fallback - show raw details
+// Budget details renderer
+function BudgetDetails({ details }: { details: Record<string, unknown> }) {
+  const budget = details.budget as Record<string, unknown>;
+  const currentBudget =
+    typeof budget.current_budget_micros === "number" ? budget.current_budget_micros : null;
+  const recommendedBudget =
+    typeof budget.recommended_budget_micros === "number" ? budget.recommended_budget_micros : null;
+
+  return (
+    <div className="space-y-2 text-sm">
+      {currentBudget !== null && (
+        <p>
+          <span className="text-muted-foreground">Current Budget:</span>{" "}
+          {formatMicros(currentBudget, "/day")}
+        </p>
+      )}
+      {recommendedBudget !== null && (
+        <p>
+          <span className="text-muted-foreground">Recommended Budget:</span>{" "}
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            {formatMicros(recommendedBudget, "/day")}
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Target CPA details renderer
+function TargetCpaDetails({ details }: { details: Record<string, unknown> }) {
+  const cpa = details.target_cpa as Record<string, unknown>;
+  const cpaMicros = typeof cpa.target_cpa_micros === "number" ? cpa.target_cpa_micros : null;
+
+  if (cpaMicros === null) return null;
+
+  return (
+    <div className="space-y-2 text-sm">
+      <p>
+        <span className="text-muted-foreground">Recommended Target CPA:</span>{" "}
+        <span className="font-semibold">{formatMicros(cpaMicros)}</span>
+      </p>
+    </div>
+  );
+}
+
+// Generic fallback renderer
+function GenericDetails({ details }: { details: Record<string, unknown> }) {
   if (Object.keys(details).length === 0) {
     return <p className="text-sm text-muted-foreground">No additional details available.</p>;
   }
@@ -257,4 +257,30 @@ function RecommendationDetails({
       {JSON.stringify(details, null, 2)}
     </pre>
   );
+}
+
+function RecommendationDetails({
+  details,
+  type,
+}: {
+  details: Record<string, unknown>;
+  type: string;
+}) {
+  // Keyword recommendation
+  if (type === "KEYWORD" && details.keyword) {
+    return <KeywordDetails details={details} />;
+  }
+
+  // Budget recommendations
+  if (type.includes("BUDGET") && details.budget) {
+    return <BudgetDetails details={details} />;
+  }
+
+  // Target CPA recommendations
+  if (type.includes("TARGET_CPA") && details.target_cpa) {
+    return <TargetCpaDetails details={details} />;
+  }
+
+  // Fallback for unknown types
+  return <GenericDetails details={details} />;
 }

@@ -7,6 +7,29 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const REQUEST_TIMEOUT = 30000;
 
 /**
+ * Mutex to prevent concurrent token refresh attempts
+ * When multiple 401s occur simultaneously, only one refresh is executed
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshTokenWithMutex(): Promise<boolean> {
+  // If a refresh is already in progress, wait for it
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  // Start a new refresh
+  refreshPromise = getAuthStore()
+    .refresh()
+    .finally(() => {
+      // Clear the mutex after refresh completes (success or failure)
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+/**
  * Creates an authenticated ky instance with JWT token injection and refresh handling
  */
 function createApiClient(): KyInstance {
@@ -30,8 +53,8 @@ function createApiClient(): KyInstance {
       afterResponse: [
         async (request, options, response) => {
           if (response.status === 401) {
-            const authStore = getAuthStore();
-            const refreshed = await authStore.refresh();
+            // Use mutex to prevent race condition on concurrent 401s
+            const refreshed = await refreshTokenWithMutex();
 
             if (refreshed) {
               // Retry the original request with new token
@@ -41,6 +64,7 @@ function createApiClient(): KyInstance {
             }
 
             // Refresh failed, logout user
+            const authStore = getAuthStore();
             authStore.logout();
             if (typeof window !== "undefined") {
               window.location.href = "/login";

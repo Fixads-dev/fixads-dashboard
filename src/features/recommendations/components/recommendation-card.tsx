@@ -115,66 +115,69 @@ export function RecommendationCard({
   );
 }
 
+// Static description mappings for simple recommendation types
+const STATIC_DESCRIPTIONS: Record<string, string> = {
+  MAXIMIZE_CONVERSIONS_OPT_IN: "Switch to Maximize Conversions bidding",
+  MAXIMIZE_CLICKS_OPT_IN: "Switch to Maximize Clicks bidding",
+  TARGET_ROAS_OPT_IN: "Enable Target ROAS bidding strategy",
+  RESPONSIVE_SEARCH_AD: "Add a responsive search ad to improve relevance",
+  RESPONSIVE_SEARCH_AD_ASSET: "Add more headlines or descriptions to your ads",
+  RESPONSIVE_SEARCH_AD_IMPROVE_AD_STRENGTH: "Improve ad strength by adding more assets",
+  USE_BROAD_MATCH_KEYWORD: "Use broad match to reach more customers",
+  KEYWORD_MATCH_TYPE: "Change keyword match type for better targeting",
+  SITELINK_ASSET: "Add sitelinks to show more links in your ads",
+  CALLOUT_ASSET: "Add callouts to highlight key benefits",
+  CALL_ASSET: "Add a phone number to your ads",
+  PERFORMANCE_MAX_OPT_IN: "Upgrade to Performance Max campaign",
+  IMPROVE_PERFORMANCE_MAX_AD_STRENGTH: "Add more assets to improve PMax ad strength",
+};
+
+// Budget-related types that share the same logic
+const BUDGET_TYPES = new Set([
+  "CAMPAIGN_BUDGET",
+  "FORECASTING_CAMPAIGN_BUDGET",
+  "MARGINAL_ROI_CAMPAIGN_BUDGET",
+]);
+
+// Build keyword description
+function buildKeywordDescription(details: Recommendation["details"]): string {
+  if (!details.keyword) return "";
+  const kw = details.keyword as { text?: string; match_type?: string };
+  const matchType = kw.match_type ? ` (${kw.match_type})` : "";
+  return `Add keyword "${kw.text || ""}${matchType}"`;
+}
+
+// Build budget description
+function buildBudgetDescription(details: Recommendation["details"]): string {
+  if (!details.budget) return "";
+  const budget = details.budget as { recommended_budget_micros?: number };
+  if (!budget.recommended_budget_micros) return "";
+  const amount = budget.recommended_budget_micros / 1_000_000;
+  return `Increase daily budget to $${amount.toFixed(2)}`;
+}
+
+// Build target CPA description
+function buildTargetCpaDescription(details: Recommendation["details"]): string {
+  if (!details.target_cpa) return "Enable Target CPA bidding strategy";
+  const cpa = details.target_cpa as { target_cpa_micros?: number };
+  if (!cpa.target_cpa_micros) return "Enable Target CPA bidding strategy";
+  const amount = cpa.target_cpa_micros / 1_000_000;
+  return `Set target CPA to $${amount.toFixed(2)}`;
+}
+
 // Build a human-readable description from recommendation details
 function buildDescription(recommendation: Recommendation): string {
   const { type, details } = recommendation;
 
-  switch (type) {
-    case "KEYWORD":
-      if (details.keyword) {
-        const kw = details.keyword as { text?: string; match_type?: string };
-        return `Add keyword "${kw.text || ""}${kw.match_type ? ` (${kw.match_type})` : ""}"`;
-      }
-      break;
-    case "CAMPAIGN_BUDGET":
-    case "FORECASTING_CAMPAIGN_BUDGET":
-    case "MARGINAL_ROI_CAMPAIGN_BUDGET":
-      if (details.budget) {
-        const budget = details.budget as { recommended_budget_micros?: number };
-        if (budget.recommended_budget_micros) {
-          const amount = budget.recommended_budget_micros / 1_000_000;
-          return `Increase daily budget to $${amount.toFixed(2)}`;
-        }
-      }
-      break;
-    case "TARGET_CPA_OPT_IN":
-      if (details.target_cpa) {
-        const cpa = details.target_cpa as { target_cpa_micros?: number };
-        if (cpa.target_cpa_micros) {
-          const amount = cpa.target_cpa_micros / 1_000_000;
-          return `Set target CPA to $${amount.toFixed(2)}`;
-        }
-      }
-      return "Enable Target CPA bidding strategy";
-    case "MAXIMIZE_CONVERSIONS_OPT_IN":
-      return "Switch to Maximize Conversions bidding";
-    case "MAXIMIZE_CLICKS_OPT_IN":
-      return "Switch to Maximize Clicks bidding";
-    case "TARGET_ROAS_OPT_IN":
-      return "Enable Target ROAS bidding strategy";
-    case "RESPONSIVE_SEARCH_AD":
-      return "Add a responsive search ad to improve relevance";
-    case "RESPONSIVE_SEARCH_AD_ASSET":
-      return "Add more headlines or descriptions to your ads";
-    case "RESPONSIVE_SEARCH_AD_IMPROVE_AD_STRENGTH":
-      return "Improve ad strength by adding more assets";
-    case "USE_BROAD_MATCH_KEYWORD":
-      return "Use broad match to reach more customers";
-    case "KEYWORD_MATCH_TYPE":
-      return "Change keyword match type for better targeting";
-    case "SITELINK_ASSET":
-      return "Add sitelinks to show more links in your ads";
-    case "CALLOUT_ASSET":
-      return "Add callouts to highlight key benefits";
-    case "CALL_ASSET":
-      return "Add a phone number to your ads";
-    case "PERFORMANCE_MAX_OPT_IN":
-      return "Upgrade to Performance Max campaign";
-    case "IMPROVE_PERFORMANCE_MAX_AD_STRENGTH":
-      return "Add more assets to improve PMax ad strength";
-    default:
-      break;
+  // Check static descriptions first
+  if (type in STATIC_DESCRIPTIONS) {
+    return STATIC_DESCRIPTIONS[type];
   }
+
+  // Handle dynamic descriptions
+  if (type === "KEYWORD") return buildKeywordDescription(details);
+  if (BUDGET_TYPES.has(type)) return buildBudgetDescription(details);
+  if (type === "TARGET_CPA_OPT_IN") return buildTargetCpaDescription(details);
 
   // Fallback: try to find any text in details
   if (typeof details === "object") {

@@ -1,56 +1,44 @@
 "use client";
 
-import { AlertCircle, Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
+import { Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccounts } from "@/features/accounts";
 import { useAssetGroups, useCampaigns } from "@/features/campaigns";
 import {
   type AssetToRemove,
-  BadAssetChip,
   type SmartOptimizerResponse,
   useApplySmartChanges,
   useSmartOptimizerAnalyze,
 } from "@/features/optimizer";
 import { EmptyState } from "@/shared/components";
-import { formatCurrency } from "@/shared/lib/format";
+import { BadAssetsCard, CampaignSelector } from "../../_components";
+import { AssetTypeSelector, GeneratedAssetsCard, GenerationSummary } from "./sub-components";
 
-const ASSET_FIELD_TYPES = [
-  { value: "HEADLINE", label: "Headlines", description: "Short text (up to 30 chars)" },
-  { value: "DESCRIPTION", label: "Descriptions", description: "Longer text (up to 90 chars)" },
-  {
-    value: "LONG_HEADLINE",
-    label: "Long Headlines",
-    description: "Extended headlines (up to 90 chars)",
-  },
-] as const;
+const getRemovalId = (asset: AssetToRemove): string =>
+  asset.asset_group_asset_resource_name || asset.asset_id;
 
 export function SmartOptimizerContent() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState<string>("");
-  const [finalUrl, setFinalUrl] = useState<string>("");
+  // Selection state
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [selectedAssetGroupId, setSelectedAssetGroupId] = useState("");
+  const [finalUrl, setFinalUrl] = useState("");
   const [assetFieldTypes, setAssetFieldTypes] = useState<Set<string>>(
     new Set(["HEADLINE", "DESCRIPTION"]),
   );
-  const [freeformPrompt, setFreeformPrompt] = useState<string>("");
-  const [keywords, setKeywords] = useState<string>("");
+  const [freeformPrompt, setFreeformPrompt] = useState("");
+  const [keywords, setKeywords] = useState("");
+
+  // Results state
   const [analysisResult, setAnalysisResult] = useState<SmartOptimizerResponse | null>(null);
   const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
   const [selectedToAdd, setSelectedToAdd] = useState<Set<number>>(new Set());
 
+  // Data fetching
   const { data: accounts, isPending: isLoadingAccounts, isError: isAccountsError } = useAccounts();
   const {
     data: campaigns,
@@ -63,12 +51,20 @@ export function SmartOptimizerContent() {
     isError: isAssetGroupsError,
   } = useAssetGroups(selectedAccountId, selectedCampaignId);
 
+  // Mutations
   const { mutate: analyze, isPending: isAnalyzing } = useSmartOptimizerAnalyze();
   const { mutate: applyChanges, isPending: isApplying } = useApplySmartChanges();
 
+  // Handlers
   const handleAnalyze = () => {
-    if (!selectedAccountId || !selectedCampaignId || !selectedAssetGroupId || !finalUrl) return;
-    if (assetFieldTypes.size === 0) return;
+    if (
+      !selectedAccountId ||
+      !selectedCampaignId ||
+      !selectedAssetGroupId ||
+      !finalUrl ||
+      assetFieldTypes.size === 0
+    )
+      return;
 
     const keywordList = keywords
       .split(",")
@@ -97,21 +93,13 @@ export function SmartOptimizerContent() {
     );
   };
 
-  const toggleAssetFieldType = (type: string) => {
-    setAssetFieldTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        next.delete(type);
-      } else {
-        next.add(type);
-      }
-      return next;
-    });
-  };
-
   const handleApply = () => {
-    if (!selectedAccountId || !analysisResult) return;
-    if (selectedToRemove.size === 0 && selectedToAdd.size === 0) return;
+    if (
+      !selectedAccountId ||
+      !analysisResult ||
+      (selectedToRemove.size === 0 && selectedToAdd.size === 0)
+    )
+      return;
 
     const assetsToAdd = analysisResult.generated_assets
       .filter((_, i) => selectedToAdd.has(i))
@@ -138,19 +126,19 @@ export function SmartOptimizerContent() {
     );
   };
 
-  // Get the identifier used for pausing assets (prefer asset_group_asset_resource_name)
-  const getRemovalId = (asset: AssetToRemove): string =>
-    asset.asset_group_asset_resource_name || asset.asset_id;
+  const toggleAssetFieldType = (type: string) => {
+    setAssetFieldTypes((prev) => {
+      const next = new Set(prev);
+      next.has(type) ? next.delete(type) : next.add(type);
+      return next;
+    });
+  };
 
   const toggleRemove = (asset: AssetToRemove) => {
     const id = getRemovalId(asset);
     setSelectedToRemove((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -158,11 +146,7 @@ export function SmartOptimizerContent() {
   const toggleAdd = (index: number) => {
     setSelectedToAdd((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
+      next.has(index) ? next.delete(index) : next.add(index);
       return next;
     });
   };
@@ -175,17 +159,14 @@ export function SmartOptimizerContent() {
 
   const selectAllCompliantSuggestions = () => {
     if (analysisResult?.generated_assets) {
-      const compliantIndices = analysisResult.generated_assets
+      const indices = analysisResult.generated_assets
         .map((a, i) => (a.compliance_passed ? i : -1))
         .filter((i) => i !== -1);
-      setSelectedToAdd(new Set(compliantIndices));
+      setSelectedToAdd(new Set(indices));
     }
   };
 
-  // Helper to get display name for account
-  const getAccountDisplayName = (acc: { descriptive_name: string | null; customer_id: string }) =>
-    acc.descriptive_name ?? acc.customer_id;
-
+  // URL validation
   const isValidUrl = (url: string) => {
     try {
       new URL(url);
@@ -195,6 +176,7 @@ export function SmartOptimizerContent() {
     }
   };
 
+  // Computed
   const isReady =
     selectedAccountId &&
     selectedCampaignId &&
@@ -204,6 +186,10 @@ export function SmartOptimizerContent() {
     assetFieldTypes.size > 0;
   const hasResults = analysisResult !== null;
   const totalChanges = selectedToRemove.size + selectedToAdd.size;
+  const noChangesFound =
+    hasResults &&
+    analysisResult.generated_assets.length === 0 &&
+    analysisResult.assets_to_remove.length === 0;
 
   return (
     <div className="space-y-6">
@@ -225,183 +211,43 @@ export function SmartOptimizerContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <Select
-                value={selectedAccountId}
-                onValueChange={setSelectedAccountId}
-                disabled={isLoadingAccounts}
-              >
-                <SelectTrigger>
-                  {isLoadingAccounts ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading accounts...
-                    </span>
-                  ) : isAccountsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select account" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts?.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {getAccountDisplayName(account)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <CampaignSelector
+            accounts={accounts}
+            campaigns={campaigns}
+            assetGroups={assetGroups}
+            selectedAccountId={selectedAccountId}
+            selectedCampaignId={selectedCampaignId}
+            selectedAssetGroupId={selectedAssetGroupId}
+            onAccountChange={setSelectedAccountId}
+            onCampaignChange={setSelectedCampaignId}
+            onAssetGroupChange={setSelectedAssetGroupId}
+            isLoadingAccounts={isLoadingAccounts}
+            isLoadingCampaigns={isLoadingCampaigns}
+            isLoadingAssetGroups={isLoadingAssetGroups}
+            isAccountsError={isAccountsError}
+            isCampaignsError={isCampaignsError}
+            isAssetGroupsError={isAssetGroupsError}
+          />
 
-            <div className="space-y-1">
-              <Select
-                value={selectedCampaignId}
-                onValueChange={setSelectedCampaignId}
-                disabled={!selectedAccountId || isLoadingCampaigns}
-              >
-                <SelectTrigger>
-                  {selectedAccountId && isLoadingCampaigns ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading campaigns...
-                    </span>
-                  ) : selectedAccountId && isCampaignsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select campaign" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {campaigns
-                    ?.filter((campaign) => campaign.campaign_id)
-                    .map((campaign) => (
-                      <SelectItem key={campaign.campaign_id} value={campaign.campaign_id}>
-                        {campaign.campaign_name || campaign.campaign_id}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <UrlInput
+            value={finalUrl}
+            onChange={setFinalUrl}
+            disabled={!selectedAssetGroupId}
+            isValid={!finalUrl || isValidUrl(finalUrl)}
+          />
 
-            <div className="space-y-1">
-              <Select
-                value={selectedAssetGroupId}
-                onValueChange={setSelectedAssetGroupId}
-                disabled={!selectedCampaignId || isLoadingAssetGroups}
-              >
-                <SelectTrigger>
-                  {selectedCampaignId && isLoadingAssetGroups ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading asset groups...
-                    </span>
-                  ) : selectedCampaignId && isAssetGroupsError ? (
-                    <span className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Error loading
-                    </span>
-                  ) : (
-                    <SelectValue placeholder="Select asset group" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {assetGroups
-                    ?.filter((group) => group.asset_group_id)
-                    .map((group) => (
-                      <SelectItem key={group.asset_group_id} value={group.asset_group_id}>
-                        {group.asset_group_name || group.asset_group_id}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <AssetTypeSelector
+            selectedTypes={assetFieldTypes}
+            onToggle={toggleAssetFieldType}
+            disabled={!selectedAssetGroupId}
+          />
 
-          <div>
-            <label htmlFor="final-url" className="text-sm font-medium flex items-center gap-2">
-              <Link className="h-4 w-4" />
-              Landing Page URL
-            </label>
-            <Input
-              id="final-url"
-              type="url"
-              placeholder="https://example.com/landing-page"
-              value={finalUrl}
-              onChange={(e) => setFinalUrl(e.target.value)}
-              className="mt-1.5"
-              disabled={!selectedAssetGroupId}
-            />
-            {finalUrl && !isValidUrl(finalUrl) && (
-              <p className="text-xs text-destructive mt-1">Please enter a valid URL</p>
-            )}
-          </div>
-
-          <div>
-            <p className="text-sm font-medium mb-2">Asset Types to Generate</p>
-            <div className="flex flex-wrap gap-4">
-              {ASSET_FIELD_TYPES.map((type) => (
-                <div key={type.value} className="flex items-start space-x-2">
-                  <Checkbox
-                    id={`asset-type-${type.value}`}
-                    checked={assetFieldTypes.has(type.value)}
-                    onCheckedChange={() => toggleAssetFieldType(type.value)}
-                    disabled={!selectedAssetGroupId}
-                  />
-                  <div className="grid gap-0.5 leading-none">
-                    <Label
-                      htmlFor={`asset-type-${type.value}`}
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      {type.label}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">{type.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {assetFieldTypes.size === 0 && selectedAssetGroupId && (
-              <p className="text-xs text-destructive mt-1">Select at least one asset type</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="freeform-prompt" className="text-sm font-medium">
-              Custom Instructions (Optional)
-            </label>
-            <Textarea
-              id="freeform-prompt"
-              placeholder="Add custom instructions for the AI, e.g., 'Focus on eco-friendly messaging' or 'Highlight free shipping'"
-              value={freeformPrompt}
-              onChange={(e) => setFreeformPrompt(e.target.value)}
-              className="mt-1.5"
-              rows={2}
-              disabled={!selectedAssetGroupId}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="keywords" className="text-sm font-medium">
-              Keywords to Include (Optional)
-            </label>
-            <Input
-              id="keywords"
-              placeholder="Enter keywords separated by commas, e.g., free shipping, 24/7 support, eco-friendly"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              className="mt-1.5"
-              disabled={!selectedAssetGroupId}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              These keywords will be incorporated into the generated assets
-            </p>
-          </div>
+          <CustomPromptInput
+            value={freeformPrompt}
+            onChange={setFreeformPrompt}
+            disabled={!selectedAssetGroupId}
+          />
+          <KeywordsInput value={keywords} onChange={setKeywords} disabled={!selectedAssetGroupId} />
 
           <Button onClick={handleAnalyze} disabled={!isReady || isAnalyzing}>
             {isAnalyzing ? (
@@ -421,169 +267,25 @@ export function SmartOptimizerContent() {
 
       {hasResults && (
         <div className="space-y-6">
-          {/* Summary Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Generation Summary</CardTitle>
-              <CardDescription>
-                Campaign: {analysisResult.campaign_name} / {analysisResult.asset_group_name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Total Analyzed</p>
-                  <p className="text-lg font-semibold">
-                    {analysisResult.summary.total_assets_analyzed}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Headlines</p>
-                  <p className="text-lg font-semibold text-blue-600">
-                    {analysisResult.summary.generated_headlines}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Descriptions</p>
-                  <p className="text-lg font-semibold text-blue-600">
-                    {analysisResult.summary.generated_descriptions}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Bad Assets</p>
-                  <p className="text-lg font-semibold text-destructive">
-                    {analysisResult.summary.bad_assets_found}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Compliant</p>
-                  <p className="text-lg font-semibold text-green-600">
-                    {analysisResult.summary.compliance_passed}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <GenerationSummary result={analysisResult} />
 
-          {/* Generated Assets */}
-          {analysisResult.generated_assets.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-blue-600">
-                      Generated Assets ({analysisResult.generated_assets.length})
-                    </CardTitle>
-                    <CardDescription>
-                      AI-generated headlines and descriptions from your landing page
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllCompliantSuggestions}
-                    disabled={isApplying}
-                  >
-                    Select All Compliant
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analysisResult.generated_assets.map((asset, index) => (
-                  <div
-                    key={`${asset.asset_type}-${index}`}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedToAdd.has(index)}
-                      onCheckedChange={() => toggleAdd(index)}
-                      disabled={!asset.compliance_passed || isApplying}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase">
-                          {asset.asset_type}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {asset.char_count} chars
-                        </span>
-                        {asset.compliance_passed ? (
-                          <span className="text-xs text-green-600">Compliant</span>
-                        ) : (
-                          <span className="text-xs text-destructive">Non-compliant</span>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium">{asset.text}</p>
-                      {asset.compliance_issues && asset.compliance_issues.length > 0 && (
-                        <p className="text-xs text-destructive">
-                          Issues: {asset.compliance_issues.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <GeneratedAssetsCard
+            assets={analysisResult.generated_assets}
+            selectedIndices={selectedToAdd}
+            onToggle={toggleAdd}
+            onSelectAll={selectAllCompliantSuggestions}
+            isApplying={isApplying}
+          />
 
-          {/* Bad Assets to Remove */}
-          {analysisResult.assets_to_remove.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-destructive">
-                      Bad Assets ({analysisResult.assets_to_remove.length})
-                    </CardTitle>
-                    <CardDescription>Select underperforming assets to remove</CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllBadAssets}
-                    disabled={isApplying}
-                  >
-                    Select All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analysisResult.assets_to_remove.map((asset: AssetToRemove) => (
-                  <div
-                    key={getRemovalId(asset)}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedToRemove.has(getRemovalId(asset))}
-                      onCheckedChange={() => toggleRemove(asset)}
-                      disabled={isApplying}
-                    />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <BadAssetChip classification={asset.reason_code} />
-                        <span className="text-xs text-muted-foreground">
-                          Score: {asset.severity_score}
-                        </span>
-                      </div>
-                      <p className="text-sm">{asset.text}</p>
-                      {asset.metrics && (
-                        <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>Impressions: {asset.metrics.impressions ?? 0}</span>
-                          <span>Clicks: {asset.metrics.clicks ?? 0}</span>
-                          <span>
-                            Cost: {formatCurrency((asset.metrics.cost_micros ?? 0) / 1_000_000)}
-                          </span>
-                          <span>Conversions: {asset.metrics.conversions ?? 0}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <BadAssetsCard
+            assets={analysisResult.assets_to_remove}
+            selectedIds={selectedToRemove}
+            onToggle={toggleRemove}
+            onSelectAll={selectAllBadAssets}
+            isApplying={isApplying}
+            getRemovalId={getRemovalId}
+          />
 
-          {/* Apply Button */}
           <div className="flex justify-end">
             <Button onClick={handleApply} disabled={totalChanges === 0 || isApplying}>
               {isApplying ? (
@@ -597,15 +299,103 @@ export function SmartOptimizerContent() {
         </div>
       )}
 
-      {hasResults &&
-        analysisResult.generated_assets.length === 0 &&
-        analysisResult.assets_to_remove.length === 0 && (
-          <EmptyState
-            icon={Sparkles}
-            title="No assets generated"
-            description="Unable to generate assets from the provided URL. Try a different landing page or add custom instructions."
-          />
-        )}
+      {noChangesFound && (
+        <EmptyState
+          icon={Sparkles}
+          title="No assets generated"
+          description="Unable to generate assets from the provided URL. Try a different landing page or add custom instructions."
+        />
+      )}
+    </div>
+  );
+}
+
+// Sub-components for inputs
+function UrlInput({
+  value,
+  onChange,
+  disabled,
+  isValid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  isValid: boolean;
+}) {
+  return (
+    <div>
+      <label htmlFor="final-url" className="text-sm font-medium flex items-center gap-2">
+        <Link className="h-4 w-4" />
+        Landing Page URL
+      </label>
+      <Input
+        id="final-url"
+        type="url"
+        placeholder="https://example.com/landing-page"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1.5"
+        disabled={disabled}
+      />
+      {value && !isValid && (
+        <p className="text-xs text-destructive mt-1">Please enter a valid URL</p>
+      )}
+    </div>
+  );
+}
+
+function CustomPromptInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div>
+      <label htmlFor="freeform-prompt" className="text-sm font-medium">
+        Custom Instructions (Optional)
+      </label>
+      <Textarea
+        id="freeform-prompt"
+        placeholder="Add custom instructions for the AI, e.g., 'Focus on eco-friendly messaging' or 'Highlight free shipping'"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1.5"
+        rows={2}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+function KeywordsInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div>
+      <label htmlFor="keywords" className="text-sm font-medium">
+        Keywords to Include (Optional)
+      </label>
+      <Input
+        id="keywords"
+        placeholder="Enter keywords separated by commas, e.g., free shipping, 24/7 support, eco-friendly"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1.5"
+        disabled={disabled}
+      />
+      <p className="text-xs text-muted-foreground mt-1">
+        These keywords will be incorporated into the generated assets
+      </p>
     </div>
   );
 }
