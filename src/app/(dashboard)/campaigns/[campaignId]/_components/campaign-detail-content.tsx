@@ -18,7 +18,7 @@ import {
 } from "@/features/campaigns";
 import type { CampaignStatus } from "@/features/campaigns/types";
 import { statusColors, statusLabels } from "./constants";
-import { AssetsTab, OverviewTab, PerformanceTab, SettingsTab } from "./tabs";
+import { AssetsTab, ExperimentationTab, OverviewTab, PerformanceTab, SettingsTab } from "./tabs";
 
 export function CampaignDetailContent() {
   const params = useParams();
@@ -122,6 +122,7 @@ export function CampaignDetailContent() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="experimentation">Experimentation</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -152,6 +153,10 @@ export function CampaignDetailContent() {
             textAssets={textAssets}
             textAssetsLoading={textAssetsLoading}
           />
+        </TabsContent>
+
+        <TabsContent value="experimentation">
+          <ExperimentationTab campaignId={campaignId} />
         </TabsContent>
 
         <TabsContent value="settings">
