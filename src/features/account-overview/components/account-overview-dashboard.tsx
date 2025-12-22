@@ -2,11 +2,14 @@
 
 import {
   AlertCircle,
+  ChevronRight,
+  Circle,
   DollarSign,
   Eye,
   Megaphone,
   Monitor,
   MousePointer,
+  Pause,
   Play,
   RefreshCw,
   Rocket,
@@ -17,6 +20,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,51 +59,6 @@ function KPICard({
   );
 }
 
-// Top campaigns table
-function TopCampaignsTable({
-  campaigns,
-  currencyCode,
-}: {
-  campaigns: TopCampaign[];
-  currencyCode?: string;
-}) {
-  if (!campaigns.length) {
-    return <p className="text-center text-muted-foreground py-8">No campaigns with conversions</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {campaigns.map((campaign) => (
-        <div
-          key={campaign.campaign_id}
-          className="flex items-center justify-between py-2 border-b last:border-0"
-        >
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{campaign.campaign_name}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">
-                {getCampaignTypeLabel(campaign.campaign_type)}
-              </Badge>
-              <Badge
-                variant={campaign.status === "ENABLED" ? "default" : "secondary"}
-                className="text-xs"
-              >
-                {campaign.status}
-              </Badge>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="font-medium">{campaign.conversions.toFixed(1)} conv.</p>
-            <p className="text-xs text-muted-foreground">
-              {formatCost(campaign.cost_micros, currencyCode)}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // Campaign type icon mapping
 const campaignTypeIcons: Record<string, React.ElementType> = {
   SEARCH: Search,
@@ -123,6 +82,102 @@ const campaignTypeColors: Record<string, string> = {
   DISCOVERY: "bg-pink-500",
   DEMAND_GEN: "bg-indigo-500",
 };
+
+// Status color and icon mapping
+const statusConfig: Record<string, { color: string; bgColor: string; icon: React.ElementType; label: string }> = {
+  ENABLED: {
+    color: "text-green-600",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
+    icon: Circle,
+    label: "Active",
+  },
+  PAUSED: {
+    color: "text-amber-600",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
+    icon: Pause,
+    label: "Paused",
+  },
+  REMOVED: {
+    color: "text-red-600",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
+    icon: AlertCircle,
+    label: "Removed",
+  },
+};
+
+// Top campaigns table
+function TopCampaignsTable({
+  campaigns,
+  currencyCode,
+  accountId,
+}: {
+  campaigns: TopCampaign[];
+  currencyCode?: string;
+  accountId?: string;
+}) {
+  if (!campaigns.length) {
+    return <p className="text-center text-muted-foreground py-8">No campaigns with conversions</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {campaigns.map((campaign) => {
+        const TypeIcon = campaignTypeIcons[campaign.campaign_type] || Megaphone;
+        const typeColor = campaignTypeColors[campaign.campaign_type] || "bg-gray-500";
+        const status = statusConfig[campaign.status] || statusConfig.PAUSED;
+        const StatusIcon = status.icon;
+
+        return (
+          <Link
+            key={campaign.campaign_id}
+            href={`/campaigns/${campaign.campaign_id}?account_id=${accountId || ""}`}
+            className="block"
+          >
+            <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent hover:border-primary/50 transition-colors cursor-pointer group">
+              {/* Campaign type icon */}
+              <div className={`p-2 rounded-lg ${typeColor} bg-opacity-20 shrink-0`}>
+                <TypeIcon className={`h-5 w-5 ${typeColor.replace("bg-", "text-")}`} />
+              </div>
+
+              {/* Campaign info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate group-hover:text-primary transition-colors">
+                  {campaign.campaign_name}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {/* Campaign type badge */}
+                  <Badge variant="outline" className="text-xs">
+                    {getCampaignTypeLabel(campaign.campaign_type)}
+                  </Badge>
+                  {/* Status badge with color */}
+                  <Badge className={`text-xs ${status.bgColor} ${status.color} border-0`}>
+                    <StatusIcon className="h-3 w-3 mr-1" />
+                    {status.label}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="text-right shrink-0">
+                <p className="font-bold text-lg">{campaign.conversions.toFixed(1)}</p>
+                <p className="text-xs text-muted-foreground">conversions</p>
+              </div>
+
+              {/* Cost */}
+              <div className="text-right shrink-0 min-w-[80px]">
+                <p className="font-medium">{formatCost(campaign.cost_micros, currencyCode)}</p>
+                <p className="text-xs text-muted-foreground">spent</p>
+              </div>
+
+              {/* Arrow indicator */}
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 // Campaign type distribution
 function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
@@ -348,6 +403,7 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
             <TopCampaignsTable
               campaigns={data.top_campaigns}
               currencyCode={data.currency_code || undefined}
+              accountId={filters.account_id}
             />
           </CardContent>
         </Card>
