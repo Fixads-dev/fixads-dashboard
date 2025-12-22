@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -179,7 +180,7 @@ const campaignTypeIcons: Record<string, React.ElementType> = {
   DEMAND_GEN: Megaphone,
 };
 
-// Campaign type color mapping
+// Campaign type color mapping (Tailwind classes for UI)
 const campaignTypeColors: Record<string, string> = {
   SEARCH: "bg-blue-500",
   SHOPPING: "bg-green-500",
@@ -189,6 +190,18 @@ const campaignTypeColors: Record<string, string> = {
   SMART: "bg-yellow-500",
   DISCOVERY: "bg-pink-500",
   DEMAND_GEN: "bg-indigo-500",
+};
+
+// Campaign type hex colors (for recharts)
+const campaignTypeHexColors: Record<string, string> = {
+  SEARCH: "#3b82f6", // blue-500
+  SHOPPING: "#22c55e", // green-500
+  DISPLAY: "#a855f7", // purple-500
+  PERFORMANCE_MAX: "#f97316", // orange-500
+  VIDEO: "#ef4444", // red-500
+  SMART: "#eab308", // yellow-500
+  DISCOVERY: "#ec4899", // pink-500
+  DEMAND_GEN: "#6366f1", // indigo-500
 };
 
 // Status color and icon mapping
@@ -291,6 +304,60 @@ function TopCampaignsTable({
 }
 
 // Campaign type distribution
+// Custom tooltip for pie chart
+interface PieTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload: { name: string; value: number; color: string; percentage: number };
+  }>;
+}
+
+function CustomPieTooltip({ active, payload }: PieTooltipProps) {
+  if (!active || !payload?.length) return null;
+
+  const data = payload[0].payload;
+  return (
+    <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
+      <p className="font-semibold flex items-center gap-2">
+        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
+        {data.name}
+      </p>
+      <p className="text-muted-foreground mt-1">
+        {data.value} {data.value === 1 ? "campaign" : "campaigns"}
+      </p>
+      <p className="font-medium text-primary">{data.percentage.toFixed(1)}%</p>
+    </div>
+  );
+}
+
+// Custom legend for pie chart
+interface LegendPayload {
+  value: string;
+  color: string;
+  payload?: { value: number; percentage: number };
+}
+
+function CustomPieLegend({ payload }: { payload?: LegendPayload[] }) {
+  if (!payload) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
+      {payload.map((entry) => (
+        <div key={entry.value} className="flex items-center gap-2 text-xs">
+          <span
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="truncate text-muted-foreground">{entry.value}</span>
+          <span className="font-medium ml-auto">{entry.payload?.value ?? 0}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
@@ -298,47 +365,44 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
     return <p className="text-center text-muted-foreground py-4">No campaigns</p>;
   }
 
-  // Sort by count (highest first)
-  const sortedEntries = Object.entries(counts).sort(([, a], [, b]) => b - a);
+  // Prepare data for pie chart, sorted by count (highest first)
+  const chartData = Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count]) => ({
+      name: getCampaignTypeLabel(type),
+      value: count,
+      color: campaignTypeHexColors[type] || "#6b7280",
+      percentage: (count / total) * 100,
+    }));
 
   return (
-    <div className="space-y-3">
-      {sortedEntries.map(([type, count]) => {
-        const Icon = campaignTypeIcons[type] || Megaphone;
-        const colorClass = campaignTypeColors[type] || "bg-gray-500";
-        const percentage = ((count / total) * 100).toFixed(0);
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="45%"
+            innerRadius={55}
+            outerRadius={90}
+            paddingAngle={2}
+            dataKey="value"
+            stroke="hsl(var(--background))"
+            strokeWidth={2}
+          >
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomPieTooltip />} />
+          <Legend content={<CustomPieLegend />} verticalAlign="bottom" />
+        </PieChart>
+      </ResponsiveContainer>
 
-        return (
-          <div key={type} className="flex items-center gap-3 py-1">
-            {/* Icon */}
-            <div className={`p-1.5 rounded ${colorClass} bg-opacity-20`}>
-              <Icon className={`h-4 w-4 ${colorClass.replace("bg-", "text-")}`} />
-            </div>
-
-            {/* Label and count */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">{getCampaignTypeLabel(type)}</span>
-                <span className="text-sm text-muted-foreground">
-                  {count} {count === 1 ? "campaign" : "campaigns"} ({percentage}%)
-                </span>
-              </div>
-              {/* Progress bar */}
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div
-                  className={`${colorClass} rounded-full h-2 transition-all`}
-                  style={{ width: `${(count / total) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Total summary */}
-      <div className="pt-2 mt-2 border-t flex justify-between text-sm">
-        <span className="font-medium">Total</span>
-        <span className="font-bold">{total} campaigns</span>
+      {/* Center text showing total */}
+      <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+        <p className="text-3xl font-bold">{total}</p>
+        <p className="text-xs text-muted-foreground">campaigns</p>
       </div>
     </div>
   );
