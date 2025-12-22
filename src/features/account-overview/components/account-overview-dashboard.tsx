@@ -22,8 +22,6 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -303,121 +301,57 @@ function TopCampaignsTable({
   );
 }
 
-// Campaign type distribution - Professional pie chart
-interface ChartDataItem {
-  name: string;
-  value: number;
-  color: string;
-  percentage: number;
-  [key: string]: string | number; // Index signature for recharts compatibility
-}
-
+// Campaign type distribution - Simple horizontal bar chart
 function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
   if (total === 0) {
     return <p className="text-center text-muted-foreground py-4">No campaigns</p>;
   }
 
-  // Prepare data for pie chart, sorted by count (highest first)
-  const chartData: ChartDataItem[] = Object.entries(counts)
+  // Prepare data sorted by count (highest first)
+  const data = Object.entries(counts)
     .sort(([, a], [, b]) => b - a)
     .map(([type, count]) => ({
+      type,
       name: getCampaignTypeLabel(type),
-      value: count,
-      color: campaignTypeHexColors[type] || "#6b7280",
+      count,
       percentage: (count / total) * 100,
+      color: campaignTypeHexColors[type] || "#6b7280",
     }));
 
-  // Get hovered item data for center display
-  const hoveredItem = hoveredIndex !== null ? chartData[hoveredIndex] : null;
+  const maxCount = Math.max(...data.map((d) => d.count));
 
   return (
-    <div className="space-y-4">
-      {/* Pie Chart */}
-      <div className="relative">
-        <ResponsiveContainer width="100%" height={200}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={55}
-              outerRadius={85}
-              paddingAngle={2}
-              dataKey="value"
-              stroke="hsl(var(--background))"
-              strokeWidth={2}
-              onMouseEnter={(_, index) => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            >
-              {chartData.map((entry, index) => (
-                <Cell
-                  key={entry.name}
-                  fill={entry.color}
-                  style={{
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    transform: hoveredIndex === index ? "scale(1.05)" : "scale(1)",
-                    transformOrigin: "center",
-                    filter: hoveredIndex === index ? "brightness(1.1)" : "none",
-                  }}
-                  opacity={hoveredIndex === null || hoveredIndex === index ? 1 : 0.5}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+    <div className="space-y-3">
+      {data.map((item) => {
+        const Icon = campaignTypeIcons[item.type] || Megaphone;
+        const barWidth = (item.count / maxCount) * 100;
 
-        {/* Center text - shows total or hovered item */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-          {hoveredItem ? (
-            <>
-              <p className="text-2xl font-bold">{hoveredItem.value}</p>
-              <p className="text-xs text-muted-foreground max-w-[80px] truncate">
-                {hoveredItem.name}
-              </p>
-              <p className="text-xs font-medium text-primary">
-                {hoveredItem.percentage.toFixed(1)}%
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold">{total}</p>
-              <p className="text-xs text-muted-foreground">campaigns</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Interactive Legend */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-1">
-        {chartData.map((entry, index) => (
-          <button
-            key={entry.name}
-            type="button"
-            className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded-md transition-all ${
-              hoveredIndex === index
-                ? "bg-muted ring-1 ring-border"
-                : hoveredIndex !== null
-                  ? "opacity-50"
-                  : "hover:bg-muted/50"
-            }`}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-            <span
-              className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/20"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="truncate text-foreground/80 text-xs">{entry.name}</span>
-            <span className="font-semibold ml-auto tabular-nums text-foreground">
-              {entry.value}
-            </span>
-          </button>
-        ))}
-      </div>
+        return (
+          <div key={item.type} className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Icon className="h-4 w-4" style={{ color: item.color }} />
+                <span className="font-medium">{item.name}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="tabular-nums">{item.count}</span>
+                <span className="text-xs">({item.percentage.toFixed(0)}%)</span>
+              </div>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${barWidth}%`,
+                  backgroundColor: item.color,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
