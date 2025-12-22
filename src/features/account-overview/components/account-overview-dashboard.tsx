@@ -4,10 +4,18 @@ import {
   AlertCircle,
   DollarSign,
   Eye,
+  Megaphone,
+  Monitor,
   MousePointer,
+  Play,
   RefreshCw,
+  Rocket,
+  Search,
+  ShoppingBag,
   ShoppingCart,
+  Sparkles,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +100,30 @@ function TopCampaignsTable({
   );
 }
 
+// Campaign type icon mapping
+const campaignTypeIcons: Record<string, React.ElementType> = {
+  SEARCH: Search,
+  SHOPPING: ShoppingBag,
+  DISPLAY: Monitor,
+  PERFORMANCE_MAX: Rocket,
+  VIDEO: Play,
+  SMART: Zap,
+  DISCOVERY: Sparkles,
+  DEMAND_GEN: Megaphone,
+};
+
+// Campaign type color mapping
+const campaignTypeColors: Record<string, string> = {
+  SEARCH: "bg-blue-500",
+  SHOPPING: "bg-green-500",
+  DISPLAY: "bg-purple-500",
+  PERFORMANCE_MAX: "bg-orange-500",
+  VIDEO: "bg-red-500",
+  SMART: "bg-yellow-500",
+  DISCOVERY: "bg-pink-500",
+  DEMAND_GEN: "bg-indigo-500",
+};
+
 // Campaign type distribution
 function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
@@ -100,22 +132,48 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
     return <p className="text-center text-muted-foreground py-4">No campaigns</p>;
   }
 
+  // Sort by count (highest first)
+  const sortedEntries = Object.entries(counts).sort(([, a], [, b]) => b - a);
+
   return (
     <div className="space-y-3">
-      {Object.entries(counts).map(([type, count]) => (
-        <div key={type} className="flex items-center justify-between">
-          <span className="text-sm">{getCampaignTypeLabel(type)}</span>
-          <div className="flex items-center gap-2">
-            <div className="w-24 bg-secondary rounded-full h-2">
-              <div
-                className="bg-primary rounded-full h-2"
-                style={{ width: `${(count / total) * 100}%` }}
-              />
+      {sortedEntries.map(([type, count]) => {
+        const Icon = campaignTypeIcons[type] || Megaphone;
+        const colorClass = campaignTypeColors[type] || "bg-gray-500";
+        const percentage = ((count / total) * 100).toFixed(0);
+
+        return (
+          <div key={type} className="flex items-center gap-3 py-1">
+            {/* Icon */}
+            <div className={`p-1.5 rounded ${colorClass} bg-opacity-20`}>
+              <Icon className={`h-4 w-4 ${colorClass.replace("bg-", "text-")}`} />
             </div>
-            <span className="text-sm font-medium w-8 text-right">{count}</span>
+
+            {/* Label and count */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium">{getCampaignTypeLabel(type)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {count} {count === 1 ? "campaign" : "campaigns"} ({percentage}%)
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div
+                  className={`${colorClass} rounded-full h-2 transition-all`}
+                  style={{ width: `${(count / total) * 100}%` }}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
+
+      {/* Total summary */}
+      <div className="pt-2 mt-2 border-t flex justify-between text-sm">
+        <span className="font-medium">Total</span>
+        <span className="font-bold">{total} campaigns</span>
+      </div>
     </div>
   );
 }
