@@ -6,6 +6,8 @@ import {
   Circle,
   DollarSign,
   Eye,
+  HelpCircle,
+  Info,
   Megaphone,
   Monitor,
   MousePointer,
@@ -24,6 +26,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAccountOverview } from "../hooks/use-account-overview";
 import type { AccountOverviewFilters, TopCampaign } from "../types";
@@ -33,7 +36,109 @@ interface AccountOverviewDashboardProps {
   filters: AccountOverviewFilters;
 }
 
-// KPI Card component
+// Metric explanations
+const metricExplanations: Record<
+  string,
+  { title: string; description: string; formula?: string; tip?: string }
+> = {
+  "Total Spend": {
+    title: "Total Ad Spend",
+    description:
+      "The total amount of money spent on your Google Ads campaigns during the selected time period.",
+    tip: "Monitor this to ensure you stay within budget. Lower spend with same results = better efficiency.",
+  },
+  Impressions: {
+    title: "Ad Impressions",
+    description:
+      "The number of times your ads were shown to users. Each time your ad appears on a search result page or website, it counts as one impression.",
+    formula: "CTR (Click-Through Rate) = Clicks ÷ Impressions × 100%",
+    tip: "High impressions but low clicks may indicate your ad copy needs improvement.",
+  },
+  Clicks: {
+    title: "Ad Clicks",
+    description:
+      "The number of times users clicked on your ads. This indicates user interest and drives traffic to your website.",
+    formula: "Avg CPC (Cost Per Click) = Total Spend ÷ Total Clicks",
+    tip: "Quality clicks matter more than quantity. Focus on attracting your target audience.",
+  },
+  Conversions: {
+    title: "Conversions",
+    description:
+      "The number of valuable actions users completed after clicking your ad, such as purchases, sign-ups, or form submissions.",
+    formula: "Cost per Conversion = Total Spend ÷ Conversions",
+    tip: "This is your most important metric - it shows actual business results from your ads.",
+  },
+  "Conversion Value": {
+    title: "Conversion Value",
+    description:
+      "The total monetary value of all conversions. This represents the revenue generated from your ad campaigns.",
+    tip: "Compare this to your spend to understand profitability.",
+  },
+  ROAS: {
+    title: "Return on Ad Spend",
+    description:
+      "How much revenue you earn for every dollar spent on advertising. A ROAS of 2x means you earn $2 for every $1 spent.",
+    formula: "ROAS = Conversion Value ÷ Ad Spend",
+    tip: "ROAS > 1x means profitable. Industry average is typically 2-4x depending on margins.",
+  },
+  "Total Campaigns": {
+    title: "Total Campaigns",
+    description:
+      "The total number of advertising campaigns in your Google Ads account, including both active and paused campaigns.",
+    tip: "Consolidating campaigns can simplify management and improve performance.",
+  },
+  "Top Campaigns": {
+    title: "Top Performing Campaigns",
+    description:
+      "Your best-performing campaigns ranked by the number of conversions. Click on any campaign to view detailed performance data and optimization options.",
+    tip: "Focus your budget on top performers. Consider pausing or optimizing low-performing campaigns.",
+  },
+  "Campaign Distribution": {
+    title: "Campaign Type Breakdown",
+    description:
+      "Shows how your campaigns are distributed across different Google Ads campaign types (Search, Shopping, Display, Performance Max, etc.).",
+    tip: "A diverse mix of campaign types can help you reach customers at different stages of their buying journey.",
+  },
+};
+
+// Info tooltip component
+function MetricInfo({ metricName }: { metricName: string }) {
+  const info = metricExplanations[metricName];
+  if (!info) return null;
+
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          className="ml-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={`Learn more about ${metricName}`}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80" side="top" align="start">
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-500" />
+            {info.title}
+          </h4>
+          <p className="text-sm text-muted-foreground">{info.description}</p>
+          {info.formula && (
+            <div className="bg-muted/50 rounded-md p-2 text-xs font-mono">{info.formula}</div>
+          )}
+          {info.tip && (
+            <p className="text-xs text-blue-600 dark:text-blue-400 flex items-start gap-1">
+              <span className="font-semibold">Tip:</span> {info.tip}
+            </p>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+// KPI Card component with info tooltip
 function KPICard({
   title,
   value,
@@ -48,7 +153,10 @@ function KPICard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="flex items-center">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <MetricInfo metricName={title} />
+        </div>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
@@ -84,7 +192,10 @@ const campaignTypeColors: Record<string, string> = {
 };
 
 // Status color and icon mapping
-const statusConfig: Record<string, { color: string; bgColor: string; icon: React.ElementType; label: string }> = {
+const statusConfig: Record<
+  string,
+  { color: string; bgColor: string; icon: React.ElementType; label: string }
+> = {
   ENABLED: {
     color: "text-green-600",
     bgColor: "bg-green-100 dark:bg-green-900/30",
@@ -130,7 +241,7 @@ function TopCampaignsTable({
         return (
           <Link
             key={campaign.campaign_id}
-            href={`/campaigns/${campaign.campaign_id}?account_id=${accountId || ""}`}
+            href={`/campaigns/${campaign.campaign_id}?account=${accountId || ""}`}
             className="block"
           >
             <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent hover:border-primary/50 transition-colors cursor-pointer group">
@@ -363,7 +474,10 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Value</CardTitle>
+            <div className="flex items-center">
+              <CardTitle className="text-sm font-medium">Conversion Value</CardTitle>
+              <MetricInfo metricName="Conversion Value" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -373,7 +487,10 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">ROAS</CardTitle>
+            <div className="flex items-center">
+              <CardTitle className="text-sm font-medium">ROAS</CardTitle>
+              <MetricInfo metricName="ROAS" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
@@ -384,7 +501,10 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+            <div className="flex items-center">
+              <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+              <MetricInfo metricName="Total Campaigns" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.total_campaigns}</div>
@@ -396,8 +516,11 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Top Campaigns</CardTitle>
-            <CardDescription>By conversion count</CardDescription>
+            <div className="flex items-center gap-1">
+              <CardTitle className="text-lg">Top Campaigns</CardTitle>
+              <MetricInfo metricName="Top Campaigns" />
+            </div>
+            <CardDescription>By conversion count • Click to view details</CardDescription>
           </CardHeader>
           <CardContent>
             <TopCampaignsTable
@@ -409,7 +532,10 @@ export function AccountOverviewDashboard({ filters }: AccountOverviewDashboardPr
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Campaign Distribution</CardTitle>
+            <div className="flex items-center gap-1">
+              <CardTitle className="text-lg">Campaign Distribution</CardTitle>
+              <MetricInfo metricName="Campaign Distribution" />
+            </div>
             <CardDescription>By campaign type</CardDescription>
           </CardHeader>
           <CardContent>
