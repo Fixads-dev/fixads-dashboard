@@ -49,11 +49,11 @@ export function useApplyRecommendationsBatch(accountId: string) {
     mutationFn: (request: ApplyRecommendationsBatchRequest) =>
       recommendationsApi.applyRecommendationsBatch(accountId, request),
     onSuccess: (response) => {
-      if (response.failure_count === 0) {
-        toast.success(`Applied ${response.success_count} recommendation(s) successfully`);
-      } else if (response.success_count > 0) {
+      if (response.total_failed === 0) {
+        toast.success(`Applied ${response.total_applied} recommendation(s) successfully`);
+      } else if (response.total_applied > 0) {
         toast.warning(
-          `Applied ${response.success_count} recommendation(s), ${response.failure_count} failed`,
+          `Applied ${response.total_applied} recommendation(s), ${response.total_failed} failed`,
         );
       } else {
         toast.error(`Failed to apply recommendations`);
@@ -109,11 +109,11 @@ export function useDismissRecommendationsBatch(accountId: string) {
     mutationFn: (request: DismissRecommendationsBatchRequest) =>
       recommendationsApi.dismissRecommendationsBatch(accountId, request),
     onSuccess: (response) => {
-      if (response.failure_count === 0) {
-        toast.success(`Dismissed ${response.success_count} recommendation(s)`);
-      } else if (response.success_count > 0) {
+      if (response.total_failed === 0) {
+        toast.success(`Dismissed ${response.total_dismissed} recommendation(s)`);
+      } else if (response.total_dismissed > 0) {
         toast.warning(
-          `Dismissed ${response.success_count} recommendation(s), ${response.failure_count} failed`,
+          `Dismissed ${response.total_dismissed} recommendation(s), ${response.total_failed} failed`,
         );
       } else {
         toast.error(`Failed to dismiss recommendations`);

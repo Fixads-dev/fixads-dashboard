@@ -153,18 +153,20 @@ export interface ApplyRecommendationResponse {
 
 /**
  * Request to apply multiple recommendations
+ * Backend expects just an array of IDs (not full request objects)
  */
 export interface ApplyRecommendationsBatchRequest {
-  recommendations: ApplyRecommendationRequest[];
+  recommendation_ids: string[];
 }
 
 /**
  * Response from applying multiple recommendations
+ * Backend returns total_applied/total_failed (not success_count/failure_count)
  */
 export interface ApplyRecommendationsBatchResponse {
   results: ApplyRecommendationResponse[];
-  success_count: number;
-  failure_count: number;
+  total_applied: number;
+  total_failed: number;
 }
 
 /**
@@ -192,11 +194,12 @@ export interface DismissRecommendationsBatchRequest {
 
 /**
  * Response from dismissing multiple recommendations
+ * Backend returns total_dismissed/total_failed (not success_count/failure_count)
  */
 export interface DismissRecommendationsBatchResponse {
   results: DismissRecommendationResponse[];
-  success_count: number;
-  failure_count: number;
+  total_dismissed: number;
+  total_failed: number;
 }
 
 /**
