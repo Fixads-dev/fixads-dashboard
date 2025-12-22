@@ -122,6 +122,7 @@ export interface Campaign {
   campaign_id: string;
   campaign_name: string;
   status: CampaignStatus;
+  campaign_type?: string; // advertising_channel_type: SEARCH, SHOPPING, PERFORMANCE_MAX, etc.
   primary_status?: PrimaryStatus;
   primary_status_reasons?: string[];
 

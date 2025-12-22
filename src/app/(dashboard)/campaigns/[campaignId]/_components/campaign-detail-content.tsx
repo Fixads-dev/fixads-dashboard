@@ -11,8 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAssetGroups,
+  useCampaign,
   useCampaignDetail,
-  useCampaigns,
   useDailyMetrics,
   useTextAssets,
 } from "@/features/campaigns";
@@ -27,10 +27,9 @@ export function CampaignDetailContent() {
   const accountId = searchParams.get("account") ?? "";
   const [dateRangeDays, setDateRangeDays] = useState<number>(30);
 
-  // Fetch all data
-  const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(
-    accountId ? { account_id: accountId } : undefined,
-  );
+  // Fetch campaign data - useCampaign works for ALL campaign types via GAQL
+  // useCampaignDetail provides richer data but only works for PMax
+  const { data: basicCampaign, isLoading: campaignLoading } = useCampaign(accountId, campaignId);
   const { data: campaignDetail, isLoading: detailLoading } = useCampaignDetail(
     accountId,
     campaignId,
@@ -46,11 +45,11 @@ export function CampaignDetailContent() {
   );
   const { data: textAssets, isLoading: textAssetsLoading } = useTextAssets(accountId, campaignId);
 
-  // Use campaign detail if available, otherwise fall back to basic campaign data
-  const campaign = campaignDetail ?? campaigns?.find((c) => c.campaign_id === campaignId);
+  // Use campaign detail if available (PMax), otherwise fall back to basic campaign data (all types)
+  const campaign = campaignDetail ?? basicCampaign;
 
   // Loading state
-  if (campaignsLoading || detailLoading) {
+  if (campaignLoading || detailLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
