@@ -93,6 +93,7 @@ export function getCampaignTypeLabel(type: string): string {
     VIDEO: "Video",
     SMART: "Smart",
     DISCOVERY: "Discovery",
+    DEMAND_GEN: "Demand Gen",
     APP: "App",
     HOTEL: "Hotel",
     LOCAL: "Local",

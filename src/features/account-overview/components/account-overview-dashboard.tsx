@@ -6,7 +6,6 @@ import {
   Circle,
   DollarSign,
   Eye,
-  HelpCircle,
   Info,
   Megaphone,
   Monitor,
@@ -112,10 +111,10 @@ function MetricInfo({ metricName }: { metricName: string }) {
       <HoverCardTrigger asChild>
         <button
           type="button"
-          className="ml-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          className="ml-1.5 inline-flex items-center text-muted-foreground/60 hover:text-muted-foreground transition-colors"
           aria-label={`Learn more about ${metricName}`}
         >
-          <HelpCircle className="h-3.5 w-3.5" />
+          <Info className="h-4 w-4" />
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="w-80" side="top" align="start">
