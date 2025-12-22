@@ -22,7 +22,8 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -302,62 +303,17 @@ function TopCampaignsTable({
   );
 }
 
-// Campaign type distribution
-// Custom tooltip for pie chart
-interface PieTooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    name: string;
-    value: number;
-    payload: { name: string; value: number; color: string; percentage: number };
-  }>;
-}
-
-function CustomPieTooltip({ active, payload }: PieTooltipProps) {
-  if (!active || !payload?.length) return null;
-
-  const data = payload[0].payload;
-  return (
-    <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold flex items-center gap-2">
-        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
-        {data.name}
-      </p>
-      <p className="text-muted-foreground mt-1">
-        {data.value} {data.value === 1 ? "campaign" : "campaigns"}
-      </p>
-      <p className="font-medium text-primary">{data.percentage.toFixed(1)}%</p>
-    </div>
-  );
-}
-
-// Custom legend for pie chart
-interface LegendPayload {
-  value: string;
+// Campaign type distribution - Professional pie chart
+interface ChartDataItem {
+  name: string;
+  value: number;
   color: string;
-  payload?: { value: number; percentage: number };
-}
-
-function CustomPieLegend({ payload }: { payload?: LegendPayload[] }) {
-  if (!payload) return null;
-
-  return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
-      {payload.map((entry) => (
-        <div key={entry.value} className="flex items-center gap-2 text-xs">
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="truncate text-muted-foreground">{entry.value}</span>
-          <span className="font-medium ml-auto">{entry.payload?.value ?? 0}</span>
-        </div>
-      ))}
-    </div>
-  );
+  percentage: number;
+  [key: string]: string | number; // Index signature for recharts compatibility
 }
 
 function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
   if (total === 0) {
@@ -365,7 +321,7 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
   }
 
   // Prepare data for pie chart, sorted by count (highest first)
-  const chartData = Object.entries(counts)
+  const chartData: ChartDataItem[] = Object.entries(counts)
     .sort(([, a], [, b]) => b - a)
     .map(([type, count]) => ({
       name: getCampaignTypeLabel(type),
@@ -374,34 +330,87 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
       percentage: (count / total) * 100,
     }));
 
-  return (
-    <div className="relative">
-      <ResponsiveContainer width="100%" height={280}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="45%"
-            innerRadius={55}
-            outerRadius={90}
-            paddingAngle={2}
-            dataKey="value"
-            stroke="hsl(var(--background))"
-            strokeWidth={2}
-          >
-            {chartData.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomPieTooltip />} />
-          <Legend content={<CustomPieLegend />} verticalAlign="bottom" />
-        </PieChart>
-      </ResponsiveContainer>
+  // Get hovered item data for center display
+  const hoveredItem = hoveredIndex !== null ? chartData[hoveredIndex] : null;
 
-      {/* Center text showing total */}
-      <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-        <p className="text-3xl font-bold">{total}</p>
-        <p className="text-xs text-muted-foreground">campaigns</p>
+  return (
+    <div className="space-y-4">
+      {/* Pie Chart */}
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={85}
+              paddingAngle={2}
+              dataKey="value"
+              stroke="hsl(var(--background))"
+              strokeWidth={2}
+              onMouseEnter={(_, index) => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={entry.name}
+                  fill={entry.color}
+                  style={{
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    transform: hoveredIndex === index ? "scale(1.05)" : "scale(1)",
+                    transformOrigin: "center",
+                    filter: hoveredIndex === index ? "brightness(1.1)" : "none",
+                  }}
+                  opacity={hoveredIndex === null || hoveredIndex === index ? 1 : 0.5}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+
+        {/* Center text - shows total or hovered item */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+          {hoveredItem ? (
+            <>
+              <p className="text-2xl font-bold">{hoveredItem.value}</p>
+              <p className="text-xs text-muted-foreground max-w-[80px] truncate">{hoveredItem.name}</p>
+              <p className="text-xs font-medium text-primary">{hoveredItem.percentage.toFixed(1)}%</p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold">{total}</p>
+              <p className="text-xs text-muted-foreground">campaigns</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Interactive Legend */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-1">
+        {chartData.map((entry, index) => (
+          <button
+            key={entry.name}
+            type="button"
+            className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded-md transition-all ${
+              hoveredIndex === index
+                ? "bg-muted ring-1 ring-border"
+                : hoveredIndex !== null
+                  ? "opacity-50"
+                  : "hover:bg-muted/50"
+            }`}
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            <span
+              className="w-3 h-3 rounded-full shrink-0 ring-1 ring-white/20"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="truncate text-foreground/80 text-xs">{entry.name}</span>
+            <span className="font-semibold ml-auto tabular-nums text-foreground">{entry.value}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
