@@ -34,12 +34,14 @@ export const campaignsApi = {
    * POST /google-ads/query?account_id=UUID
    */
   getCampaign: async (accountId: string, campaignId: string): Promise<Campaign | null> => {
+    // GAQL requires date filter for metrics - use LAST_30_DAYS
     const query = `
       SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type,
              metrics.impressions, metrics.clicks, metrics.conversions, metrics.cost_micros,
              metrics.conversions_value
       FROM campaign
       WHERE campaign.id = ${campaignId}
+        AND segments.date DURING LAST_30_DAYS
     `;
     try {
       const result = await apiMethods.post<{ rows: Record<string, unknown>[] }>(
@@ -47,21 +49,36 @@ export const campaignsApi = {
         { query },
       );
       if (result.rows && result.rows.length > 0) {
-        const row = result.rows[0];
+        // Aggregate metrics from multiple daily rows
+        let impressions = 0;
+        let clicks = 0;
+        let conversions = 0;
+        let cost_micros = 0;
+        let conversions_value = 0;
+
+        const firstRow = result.rows[0];
+        for (const row of result.rows) {
+          impressions += Number(row["metrics.impressions"] ?? 0);
+          clicks += Number(row["metrics.clicks"] ?? 0);
+          conversions += Number(row["metrics.conversions"] ?? 0);
+          cost_micros += Number(row["metrics.cost_micros"] ?? 0);
+          conversions_value += Number(row["metrics.conversions_value"] ?? 0);
+        }
+
         return {
-          campaign_id: String(row["campaign.id"] ?? campaignId),
-          campaign_name: String(row["campaign.name"] ?? ""),
-          status: (row["campaign.status"] as Campaign["status"]) ?? "UNKNOWN",
-          campaign_type: String(row["campaign.advertising_channel_type"] ?? ""),
-          impressions: Number(row["metrics.impressions"] ?? 0),
-          clicks: Number(row["metrics.clicks"] ?? 0),
-          conversions: Number(row["metrics.conversions"] ?? 0),
-          cost_micros: Number(row["metrics.cost_micros"] ?? 0),
-          conversions_value: Number(row["metrics.conversions_value"] ?? 0),
+          campaign_id: String(firstRow["campaign.id"] ?? campaignId),
+          campaign_name: String(firstRow["campaign.name"] ?? ""),
+          status: (firstRow["campaign.status"] as Campaign["status"]) ?? "UNKNOWN",
+          campaign_type: String(firstRow["campaign.advertising_channel_type"] ?? ""),
+          impressions,
+          clicks,
+          conversions,
+          cost_micros,
+          conversions_value,
         };
       }
-    } catch {
-      // Fall through to return null
+    } catch (error) {
+      console.error("[getCampaign] Failed to fetch campaign:", error);
     }
     return null;
   },
