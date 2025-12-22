@@ -375,8 +375,12 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
           {hoveredItem ? (
             <>
               <p className="text-2xl font-bold">{hoveredItem.value}</p>
-              <p className="text-xs text-muted-foreground max-w-[80px] truncate">{hoveredItem.name}</p>
-              <p className="text-xs font-medium text-primary">{hoveredItem.percentage.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground max-w-[80px] truncate">
+                {hoveredItem.name}
+              </p>
+              <p className="text-xs font-medium text-primary">
+                {hoveredItem.percentage.toFixed(1)}%
+              </p>
             </>
           ) : (
             <>
@@ -408,7 +412,9 @@ function CampaignTypeDistribution({ counts }: { counts: Record<string, number> }
               style={{ backgroundColor: entry.color }}
             />
             <span className="truncate text-foreground/80 text-xs">{entry.name}</span>
-            <span className="font-semibold ml-auto tabular-nums text-foreground">{entry.value}</span>
+            <span className="font-semibold ml-auto tabular-nums text-foreground">
+              {entry.value}
+            </span>
           </button>
         ))}
       </div>
