@@ -14,7 +14,7 @@ import type {
   RecommendationType,
 } from "../types";
 
-const GOOGLE_ADS_PATH = "google-ads";
+const GOOGLE_ADS_PATH = "google-ads/v1";
 
 export const recommendationsApi = {
   /**

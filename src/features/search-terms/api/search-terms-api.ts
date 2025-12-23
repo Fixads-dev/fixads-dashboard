@@ -1,6 +1,8 @@
 import { apiMethods } from "@/shared/api/client";
 import type { SearchTermsFilters, SearchTermsResponse } from "../types";
 
+const GOOGLE_ADS_PATH = "google-ads/v1";
+
 /**
  * Search Terms API client
  */
@@ -25,6 +27,8 @@ export const searchTermsApi = {
       params.set("limit", String(filters.limit));
     }
 
-    return apiMethods.get<SearchTermsResponse>(`google-ads/search-terms?${params.toString()}`);
+    return apiMethods.get<SearchTermsResponse>(
+      `${GOOGLE_ADS_PATH}/search-terms?${params.toString()}`,
+    );
   },
 };

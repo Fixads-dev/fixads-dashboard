@@ -6,7 +6,7 @@ import type {
   SmartOptimizerResponse,
 } from "../types";
 
-const GOOGLE_ADS_PATH = "google-ads";
+const GOOGLE_ADS_PATH = "google-ads/v1";
 
 // Extended timeout for AssetGenerationService operations
 const EXTENDED_TIMEOUT = 120000; // 2 minutes

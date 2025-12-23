@@ -16,7 +16,7 @@ import type {
   DailyMetrics,
 } from "../types";
 
-const GOOGLE_ADS_PATH = "google-ads";
+const GOOGLE_ADS_PATH = "google-ads/v1";
 
 export const campaignsApi = {
   /**

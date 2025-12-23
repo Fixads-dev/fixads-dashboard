@@ -10,7 +10,7 @@ export const APP_DESCRIPTION = "Optimize your Google Ads Performance Max campaig
  */
 export const API_PATHS = {
   AUTH: "/auth/v1",
-  GOOGLE_ADS: "/google-ads",
+  GOOGLE_ADS: "/google-ads/v1",
   OPTIMIZER: "/optimization/v1",
 } as const;
 

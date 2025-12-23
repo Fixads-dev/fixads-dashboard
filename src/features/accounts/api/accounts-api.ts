@@ -9,7 +9,7 @@ import type {
   OAuth2TokenResponse,
 } from "../types";
 
-const GOOGLE_ADS_PATH = "google-ads";
+const GOOGLE_ADS_PATH = "google-ads/v1";
 
 export const accountsApi = {
   /**

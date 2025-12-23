@@ -1,6 +1,8 @@
 import { apiMethods } from "@/shared/api/client";
 import type { ChangeHistoryFilters, ChangeHistoryResponse } from "../types";
 
+const GOOGLE_ADS_PATH = "google-ads/v1";
+
 /**
  * Change History API client
  */
@@ -25,6 +27,8 @@ export const changeHistoryApi = {
       params.set("limit", String(filters.limit));
     }
 
-    return apiMethods.get<ChangeHistoryResponse>(`google-ads/change-history?${params.toString()}`);
+    return apiMethods.get<ChangeHistoryResponse>(
+      `${GOOGLE_ADS_PATH}/change-history?${params.toString()}`,
+    );
   },
 };

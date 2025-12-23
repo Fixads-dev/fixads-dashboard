@@ -9,7 +9,7 @@ import type {
   TextOptimizerResponse,
 } from "../types";
 
-const GOOGLE_ADS_PATH = "google-ads";
+const GOOGLE_ADS_PATH = "google-ads/v1";
 
 // Extended timeout for operations that make multiple Google Ads API calls
 const EXTENDED_TIMEOUT = 120000; // 2 minutes

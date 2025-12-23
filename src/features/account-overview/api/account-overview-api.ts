@@ -1,6 +1,8 @@
 import { apiMethods } from "@/shared/api/client";
 import type { AccountOverviewFilters, AccountOverviewResponse } from "../types";
 
+const GOOGLE_ADS_PATH = "google-ads/v1";
+
 /**
  * Account Overview API client
  */
@@ -16,6 +18,8 @@ export const accountOverviewApi = {
       params.set("date_range", filters.date_range);
     }
 
-    return apiMethods.get<AccountOverviewResponse>(`google-ads/overview?${params.toString()}`);
+    return apiMethods.get<AccountOverviewResponse>(
+      `${GOOGLE_ADS_PATH}/overview?${params.toString()}`,
+    );
   },
 };
