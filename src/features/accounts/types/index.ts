@@ -1,8 +1,9 @@
 /**
- * Account status enum - matches backend AccountStatus
- * @see fixads-api/services/google-ads/app/domain/enums.py
+ * Account status enum - matches backend AccountStatus serialized values
+ * Backend enum values are lowercase strings
+ * @see fixads-api/services/google-ads-service/src/google_ads_service/domain/models.py
  */
-export type AccountStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED" | "PENDING";
+export type AccountStatus = "active" | "inactive" | "error" | "pending";
 
 /**
  * Google Ads Account - matches API response (snake_case)
