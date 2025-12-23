@@ -1,14 +1,14 @@
 /**
- * User role enum - matches backend UserRole
- * @see fixads-api/services/auth/app/domain/enums.py
+ * User role enum - matches backend UserRole serialized values (lowercase)
+ * @see fixads-api/services/auth-service/src/auth_service/domain/models.py
  */
-export type UserRole = "ADMIN" | "USER" | "VIEWER";
+export type UserRole = "admin" | "user" | "viewer";
 
 /**
- * User status enum - matches backend UserStatus
- * @see fixads-api/services/auth/app/domain/enums.py
+ * User status enum - matches backend UserStatus serialized values (lowercase)
+ * @see fixads-api/services/auth-service/src/auth_service/domain/models.py
  */
-export type UserStatus = "ACTIVE" | "INACTIVE" | "PENDING";
+export type UserStatus = "active" | "inactive" | "suspended";
 
 /**
  * User from API response (snake_case)

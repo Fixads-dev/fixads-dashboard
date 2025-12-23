@@ -1,3 +1,8 @@
+import type { UserRole, UserStatus } from "@/features/auth/types";
+
+// Re-export for convenience
+export type { UserRole, UserStatus };
+
 /**
  * Admin user from API response (snake_case)
  */
@@ -12,9 +17,6 @@ export interface AdminUser {
   created_at: string;
   updated_at: string;
 }
-
-export type UserRole = "ADMIN" | "USER";
-export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "DELETED";
 
 /**
  * GET /auth/v1/users response
@@ -46,8 +48,8 @@ export function isAdminUser(user: {
   email: string;
 }): boolean {
   return (
-    user.role === "ADMIN" &&
-    user.status === "ACTIVE" &&
+    user.role === "admin" &&
+    user.status === "active" &&
     user.is_activated === true &&
     user.email.endsWith(ADMIN_EMAIL_DOMAIN)
   );

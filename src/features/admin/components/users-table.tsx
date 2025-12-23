@@ -19,21 +19,28 @@ interface UsersTableProps {
 }
 
 function getRoleBadgeVariant(role: UserRole) {
-  return role === "ADMIN" ? "default" : "secondary";
+  return role === "admin" ? "default" : "secondary";
 }
 
 function getStatusBadgeVariant(status: UserStatus) {
   switch (status) {
-    case "ACTIVE":
+    case "active":
       return "default";
-    case "INACTIVE":
+    case "inactive":
       return "secondary";
-    case "SUSPENDED":
-    case "DELETED":
+    case "suspended":
       return "destructive";
     default:
       return "outline";
   }
+}
+
+function formatRole(role: UserRole): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function formatStatus(status: UserStatus): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function formatDate(dateString: string | null): string {
@@ -120,10 +127,10 @@ export function UsersTable({ users, isLoading }: UsersTableProps) {
             <TableCell className="font-medium">{user.email}</TableCell>
             <TableCell>{user.full_name ?? "-"}</TableCell>
             <TableCell>
-              <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
+              <Badge variant={getRoleBadgeVariant(user.role)}>{formatRole(user.role)}</Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={getStatusBadgeVariant(user.status)}>{user.status}</Badge>
+              <Badge variant={getStatusBadgeVariant(user.status)}>{formatStatus(user.status)}</Badge>
             </TableCell>
             <TableCell>
               <Badge variant={user.is_activated ? "default" : "destructive"}>
