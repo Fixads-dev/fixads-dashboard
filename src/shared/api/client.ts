@@ -74,6 +74,45 @@ function isCircuitBreakerFailure(status?: number): boolean {
 }
 
 /**
+ * Extract error message from Problem JSON response (RFC 7807)
+ * Returns message and optional error_code for programmatic handling
+ */
+function parseErrorResponse(body: unknown): { message?: string; errorCode?: string } {
+  if (!body || typeof body !== "object") {
+    return {};
+  }
+
+  const problemJson = body as ProblemJsonResponse;
+  const result: { message?: string; errorCode?: string } = {};
+
+  // Problem JSON format: prefer 'detail', fall back to 'message'
+  if (problemJson.detail) {
+    result.message = String(problemJson.detail);
+  } else if (problemJson.message) {
+    result.message = String(problemJson.message);
+  }
+
+  // Attach error_code for programmatic error handling
+  if (problemJson.error_code) {
+    result.errorCode = String(problemJson.error_code);
+  }
+
+  return result;
+}
+
+/**
+ * Safely parse JSON from response, handling consumption issues
+ */
+async function safeParseResponseJson(response: Response): Promise<unknown> {
+  try {
+    const clonedResponse = response.clone();
+    return await clonedResponse.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Creates an authenticated ky instance with JWT token injection and refresh handling
  */
 function createApiClient(): KyInstance {
@@ -141,28 +180,19 @@ function createApiClient(): KyInstance {
             apiCircuitBreaker.recordFailure();
           }
 
+          // Parse error response and attach to error object
           if (response) {
-            try {
-              // Clone response to avoid body consumption issues (ky v1.14.1)
-              const clonedResponse = response.clone();
-              const body = (await clonedResponse.json()) as ProblemJsonResponse;
-              // Problem JSON format (RFC 7807): use 'detail' as the error message
-              // Fall back to 'message' for backwards compatibility
-              if (body && typeof body === "object") {
-                if ("detail" in body && body.detail) {
-                  error.message = String(body.detail);
-                } else if ("message" in body && body.message) {
-                  error.message = String(body.message);
-                }
-                // Attach error_code for programmatic error handling
-                if ("error_code" in body && body.error_code) {
-                  (error as ApiError).errorCode = String(body.error_code);
-                }
-              }
-            } catch {
-              // Response body is not JSON or already consumed
+            const body = await safeParseResponseJson(response);
+            const { message, errorCode } = parseErrorResponse(body);
+
+            if (message) {
+              error.message = message;
+            }
+            if (errorCode) {
+              (error as ApiError).errorCode = errorCode;
             }
           }
+
           return error;
         },
       ],
