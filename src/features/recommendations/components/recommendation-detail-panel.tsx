@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -11,8 +11,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { Recommendation, RecommendationImpact } from "../types";
-import { calculateImpactPercentage, getRecommendationLabel } from "../types";
+import type { Recommendation } from "../types";
+import { getRecommendationLabel } from "../types";
+import { ImpactMetricsSection, RecommendationDetails } from "./recommendation-details";
 import { RecommendationTypeBadge } from "./recommendation-type-badge";
 
 interface RecommendationDetailPanelProps {
@@ -55,17 +56,15 @@ export function RecommendationDetailPanel({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* Impact Section */}
           {recommendation.impact && (
             <section>
               <h4 className="text-sm font-medium mb-3">Estimated Impact</h4>
-              <ImpactMetrics impact={recommendation.impact} />
+              <ImpactMetricsSection impact={recommendation.impact} />
             </section>
           )}
 
           <Separator />
 
-          {/* Details Section */}
           <section>
             <h4 className="text-sm font-medium mb-3">Recommendation Details</h4>
             <RecommendationDetails details={recommendation.details} type={recommendation.type} />
@@ -73,7 +72,6 @@ export function RecommendationDetailPanel({
 
           <Separator />
 
-          {/* Metadata */}
           <section className="text-xs text-muted-foreground space-y-1">
             <p>
               <span className="font-medium">Type:</span> {recommendation.type}
@@ -112,175 +110,4 @@ export function RecommendationDetailPanel({
       </SheetContent>
     </Sheet>
   );
-}
-
-function ImpactMetrics({ impact }: { impact: RecommendationImpact }) {
-  const metrics = [
-    { key: "conversions", label: "Conversions" },
-    { key: "clicks", label: "Clicks" },
-    { key: "impressions", label: "Impressions" },
-    { key: "cost_micros", label: "Cost" },
-  ] as const;
-
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      {metrics.map(({ key, label }) => {
-        const base = impact.base_metrics[key];
-        const potential = impact.potential_metrics[key];
-        const change = calculateImpactPercentage(impact, key);
-        const isCost = key === "cost_micros";
-
-        // Format values
-        const formatValue = (v: number) => {
-          if (isCost) return `$${(v / 1_000_000).toFixed(2)}`;
-          if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-          if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-          return v.toFixed(key === "conversions" ? 1 : 0);
-        };
-
-        // Determine color (for cost, increase is negative)
-        const isPositive = isCost ? (change ?? 0) < 0 : (change ?? 0) > 0;
-
-        return (
-          <div key={key} className="bg-muted/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">{label}</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-semibold">{formatValue(potential)}</span>
-              {change !== null && change !== 0 && (
-                <span
-                  className={`text-sm flex items-center ${
-                    isPositive
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-600 dark:text-red-400"
-                  }`}
-                >
-                  <ArrowUpRight className={`h-3 w-3 ${change < 0 ? "rotate-90" : ""}`} />
-                  {change > 0 ? "+" : ""}
-                  {change}%
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">from {formatValue(base)}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Helper to format micros to dollars
-const formatMicros = (micros: number, suffix = "") =>
-  `$${(micros / 1_000_000).toFixed(2)}${suffix}`;
-
-// Keyword details renderer
-function KeywordDetails({ details }: { details: Record<string, unknown> }) {
-  const kw = details.keyword as Record<string, unknown>;
-  const text = typeof kw.text === "string" ? kw.text : null;
-  const matchType = typeof kw.match_type === "string" ? kw.match_type : null;
-  const bidMicros = typeof kw.cpc_bid_micros === "number" ? kw.cpc_bid_micros : null;
-
-  return (
-    <div className="space-y-2 text-sm">
-      {text && (
-        <p>
-          <span className="text-muted-foreground">Keyword:</span>{" "}
-          <span className="font-mono bg-muted px-1 rounded">{text}</span>
-        </p>
-      )}
-      {matchType && (
-        <p>
-          <span className="text-muted-foreground">Match Type:</span> {matchType}
-        </p>
-      )}
-      {bidMicros && (
-        <p>
-          <span className="text-muted-foreground">Recommended Bid:</span> {formatMicros(bidMicros)}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Budget details renderer
-function BudgetDetails({ details }: { details: Record<string, unknown> }) {
-  const budget = details.budget as Record<string, unknown>;
-  const currentBudget =
-    typeof budget.current_budget_micros === "number" ? budget.current_budget_micros : null;
-  const recommendedBudget =
-    typeof budget.recommended_budget_micros === "number" ? budget.recommended_budget_micros : null;
-
-  return (
-    <div className="space-y-2 text-sm">
-      {currentBudget !== null && (
-        <p>
-          <span className="text-muted-foreground">Current Budget:</span>{" "}
-          {formatMicros(currentBudget, "/day")}
-        </p>
-      )}
-      {recommendedBudget !== null && (
-        <p>
-          <span className="text-muted-foreground">Recommended Budget:</span>{" "}
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-            {formatMicros(recommendedBudget, "/day")}
-          </span>
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Target CPA details renderer
-function TargetCpaDetails({ details }: { details: Record<string, unknown> }) {
-  const cpa = details.target_cpa as Record<string, unknown>;
-  const cpaMicros = typeof cpa.target_cpa_micros === "number" ? cpa.target_cpa_micros : null;
-
-  if (cpaMicros === null) return null;
-
-  return (
-    <div className="space-y-2 text-sm">
-      <p>
-        <span className="text-muted-foreground">Recommended Target CPA:</span>{" "}
-        <span className="font-semibold">{formatMicros(cpaMicros)}</span>
-      </p>
-    </div>
-  );
-}
-
-// Generic fallback renderer
-function GenericDetails({ details }: { details: Record<string, unknown> }) {
-  if (Object.keys(details).length === 0) {
-    return <p className="text-sm text-muted-foreground">No additional details available.</p>;
-  }
-
-  return (
-    <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
-      {JSON.stringify(details, null, 2)}
-    </pre>
-  );
-}
-
-function RecommendationDetails({
-  details,
-  type,
-}: {
-  details: Record<string, unknown>;
-  type: string;
-}) {
-  // Keyword recommendation
-  if (type === "KEYWORD" && details.keyword) {
-    return <KeywordDetails details={details} />;
-  }
-
-  // Budget recommendations
-  if (type.includes("BUDGET") && details.budget) {
-    return <BudgetDetails details={details} />;
-  }
-
-  // Target CPA recommendations
-  if (type.includes("TARGET_CPA") && details.target_cpa) {
-    return <TargetCpaDetails details={details} />;
-  }
-
-  // Fallback for unknown types
-  return <GenericDetails details={details} />;
 }

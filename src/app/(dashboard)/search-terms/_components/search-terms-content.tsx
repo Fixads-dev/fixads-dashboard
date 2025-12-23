@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -21,9 +21,11 @@ export function SearchTermsContent() {
   const [dateRange, setDateRange] = useState<DateRange>("LAST_30_DAYS");
 
   // Auto-select first account if only one
-  if (!selectedAccountId && accounts?.length === 1) {
-    setSelectedAccountId(accounts[0].id);
-  }
+  useEffect(() => {
+    if (!selectedAccountId && accounts?.length === 1) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
 
   return (
     <div className="space-y-6">
