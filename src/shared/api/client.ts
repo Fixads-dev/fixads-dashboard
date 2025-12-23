@@ -1,8 +1,32 @@
 "use client";
 
-import ky, { type KyInstance, type Options } from "ky";
+import ky, { type HTTPError, type KyInstance, type Options } from "ky";
 import { getAuthStore } from "@/features/auth";
 import { CircuitBreaker, CircuitBreakerOpenError } from "@/shared/lib/circuit-breaker";
+
+/**
+ * Problem JSON response format (RFC 7807)
+ * All backend services use this standardized format
+ */
+interface ProblemJsonResponse {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  error_code?: string;
+  // Legacy field for backwards compatibility
+  message?: string;
+  // Validation errors
+  errors?: Array<{ field: string; message: string; type: string }>;
+}
+
+/**
+ * Extended error with error_code for programmatic handling
+ */
+export interface ApiError extends HTTPError {
+  errorCode?: string;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const REQUEST_TIMEOUT = 30000;
@@ -121,9 +145,19 @@ function createApiClient(): KyInstance {
             try {
               // Clone response to avoid body consumption issues (ky v1.14.1)
               const clonedResponse = response.clone();
-              const body = await clonedResponse.json();
-              if (body && typeof body === "object" && "message" in body) {
-                error.message = String(body.message);
+              const body = (await clonedResponse.json()) as ProblemJsonResponse;
+              // Problem JSON format (RFC 7807): use 'detail' as the error message
+              // Fall back to 'message' for backwards compatibility
+              if (body && typeof body === "object") {
+                if ("detail" in body && body.detail) {
+                  error.message = String(body.detail);
+                } else if ("message" in body && body.message) {
+                  error.message = String(body.message);
+                }
+                // Attach error_code for programmatic error handling
+                if ("error_code" in body && body.error_code) {
+                  (error as ApiError).errorCode = String(body.error_code);
+                }
               }
             } catch {
               // Response body is not JSON or already consumed
