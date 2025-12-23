@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { textOptimizerApi } from "../api/text-optimizer-api";
-import type { TargetCpaRequest, TextOptimizerApplyRequest, TextOptimizerRequest } from "../types";
+import type {
+  TargetCpaRequest,
+  TargetCpaResponse,
+  TextOptimizerApplyRequest,
+  TextOptimizerRequest,
+} from "../types";
 
 interface AnalyzeParams {
   accountId: string;
@@ -100,16 +105,47 @@ export function useSetTargetCpa() {
   return useMutation({
     mutationFn: ({ accountId, campaignId, request }: SetTargetCpaParams) =>
       textOptimizerApi.setTargetCpa(accountId, campaignId, request),
+    onMutate: async ({ accountId, campaignId, request }) => {
+      // Cancel outgoing refetches
+      const queryKey = QUERY_KEYS.TARGET_CPA(accountId, campaignId);
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot previous value
+      const previousCpa = queryClient.getQueryData<TargetCpaResponse>(queryKey);
+
+      // Optimistically update to new value
+      if (previousCpa) {
+        queryClient.setQueryData<TargetCpaResponse>(queryKey, {
+          ...previousCpa,
+          target_cpa_micros: request.target_cpa_micros,
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      return { previousCpa, queryKey };
+    },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.TARGET_CPA(variables.accountId, variables.campaignId),
-      });
+      // Update with server response
+      queryClient.setQueryData(
+        QUERY_KEYS.TARGET_CPA(variables.accountId, variables.campaignId),
+        data,
+      );
       const cpaDollars = data.target_cpa_micros / 1_000_000;
       toast.success(`Target CPA set to ${data.currency_code} ${cpaDollars.toFixed(2)}`);
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousCpa && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousCpa);
+      }
       toast.error("Failed to update target CPA", {
         description: error.message,
+      });
+    },
+    onSettled: (_data, _error, variables) => {
+      // Refetch to ensure sync with server
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.TARGET_CPA(variables.accountId, variables.campaignId),
       });
     },
   });

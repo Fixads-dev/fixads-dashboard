@@ -61,22 +61,60 @@ export function useGetAccessibleCustomers() {
 
 /**
  * Hook to connect account directly with refresh token
+ * Uses optimistic update to show pending account immediately
  */
 export function useConnectAccount() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (params: ConnectAccountRequest) => accountsApi.connectAccount(params),
+    onMutate: async (params) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+
+      // Snapshot previous value
+      const previousAccounts = queryClient.getQueryData<GoogleAdsAccount[]>(QUERY_KEYS.ACCOUNTS);
+
+      // Optimistically add a pending account
+      const optimisticAccount: GoogleAdsAccount = {
+        id: `pending-${params.customer_id}`,
+        customer_id: params.customer_id,
+        descriptive_name: null,
+        status: "pending",
+        login_customer_id: params.login_customer_id,
+      };
+
+      queryClient.setQueryData<GoogleAdsAccount[]>(QUERY_KEYS.ACCOUNTS, (old) => {
+        if (!old) return [optimisticAccount];
+        // Don't add if already exists
+        if (old.some((a) => a.customer_id === params.customer_id)) return old;
+        return [...old, optimisticAccount];
+      });
+
+      return { previousAccounts };
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+      // Replace optimistic account with real data
+      queryClient.setQueryData<GoogleAdsAccount[]>(QUERY_KEYS.ACCOUNTS, (old) => {
+        if (!old) return [data];
+        return old.map((account) => (account.customer_id === data.customer_id ? data : account));
+      });
       toast.success("Account connected successfully", {
         description: `Connected ${data.descriptive_name ?? data.customer_id}`,
       });
     },
-    onError: (error) => {
+    onError: (error, _params, context) => {
+      // Rollback on error
+      if (context?.previousAccounts) {
+        queryClient.setQueryData(QUERY_KEYS.ACCOUNTS, context.previousAccounts);
+      }
       toast.error("Failed to connect account", {
         description: error.message,
       });
+    },
+    onSettled: () => {
+      // Refetch to ensure sync with server
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
     },
   });
 }

@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { experimentationApi } from "../api/experimentation-api";
-import type { BeliefUpdateRequest, MABStateCreateRequest, SelectionRequest } from "../types";
+import type {
+  BeliefUpdateRequest,
+  MABState,
+  MABStateCreateRequest,
+  SelectionRequest,
+} from "../types";
 
 // ==================== MAB State Hooks ====================
 
@@ -88,6 +93,7 @@ export function useBeliefHistory(assetId: string, limit = 50, platform?: string)
 
 /**
  * Update belief state with conversion data
+ * Uses optimistic update to show new probability immediately
  * Note: Backend returns BeliefUpdateResponse (not full MABState)
  * Pass campaignId to invalidate campaign probabilities cache
  */
@@ -96,25 +102,80 @@ export function useUpdateBelief(campaignId?: string) {
 
   return useMutation({
     mutationFn: (request: BeliefUpdateRequest) => experimentationApi.updateBelief(request),
+    onMutate: async (request) => {
+      const stateQueryKey = QUERY_KEYS.EXPERIMENTATION.mabState(request.asset_id);
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: stateQueryKey });
+      if (campaignId) {
+        await queryClient.cancelQueries({
+          queryKey: QUERY_KEYS.EXPERIMENTATION.campaignProbabilities(campaignId),
+        });
+      }
+
+      // Snapshot previous values
+      const previousState = queryClient.getQueryData<MABState>(stateQueryKey);
+
+      // Optimistically update belief state
+      if (previousState) {
+        // Calculate new alpha/beta: alpha += conversions, beta += (clicks - conversions)
+        const newAlpha = previousState.alpha + request.conversions;
+        const newBeta = previousState.beta + (request.clicks - request.conversions);
+        const newExpectedValue = newAlpha / (newAlpha + newBeta);
+
+        queryClient.setQueryData<MABState>(stateQueryKey, {
+          ...previousState,
+          alpha: newAlpha,
+          beta: newBeta,
+          expected_value: newExpectedValue,
+          win_probability: newExpectedValue,
+          total_trials: previousState.total_trials + request.clicks,
+          total_successes: previousState.total_successes + request.conversions,
+          last_updated_at: new Date().toISOString(),
+        });
+      }
+
+      return { previousState, stateQueryKey };
+    },
     onSuccess: (data) => {
-      // Invalidate the single asset state
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.EXPERIMENTATION.mabState(data.asset_id),
+      // Update with server response values
+      const stateQueryKey = QUERY_KEYS.EXPERIMENTATION.mabState(data.asset_id);
+      queryClient.setQueryData<MABState>(stateQueryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          alpha: data.alpha,
+          beta: data.beta,
+          expected_value: data.expected_value,
+          win_probability: data.expected_value,
+          total_trials: data.total_trials,
+          status: data.status,
+        };
       });
-      // Invalidate campaign probabilities if campaignId provided
+
+      toast.success("Belief state updated", {
+        description: `Win probability: ${((data.alpha / (data.alpha + data.beta)) * 100).toFixed(1)}%`,
+      });
+    },
+    onError: (error, _request, context) => {
+      // Rollback on error
+      if (context?.previousState && context?.stateQueryKey) {
+        queryClient.setQueryData(context.stateQueryKey, context.previousState);
+      }
+      toast.error("Failed to update belief state", {
+        description: error.message,
+      });
+    },
+    onSettled: (_data, _error, request) => {
+      // Refetch to ensure sync with server
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.EXPERIMENTATION.mabState(request.asset_id),
+      });
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: QUERY_KEYS.EXPERIMENTATION.campaignProbabilities(campaignId),
         });
       }
-      toast.success("Belief state updated", {
-        description: `Win probability: ${((data.alpha / (data.alpha + data.beta)) * 100).toFixed(1)}%`,
-      });
-    },
-    onError: (error) => {
-      toast.error("Failed to update belief state", {
-        description: error.message,
-      });
     },
   });
 }
