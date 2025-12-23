@@ -300,10 +300,8 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAndSorted.map((term, index) => (
-              <TableRow
-                key={`${term.search_term}-${term.campaign_id}-${term.ad_group_id}-${index}`}
-              >
+            {filteredAndSorted.map((term) => (
+              <TableRow key={`${term.search_term}-${term.campaign_id}-${term.ad_group_id}`}>
                 <TableCell>
                   <div>
                     <p className="font-medium">{term.search_term}</p>

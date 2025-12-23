@@ -79,12 +79,14 @@ function createApiClient(): KyInstance {
           const { response } = error;
           if (response) {
             try {
-              const body = await response.json();
+              // Clone response to avoid body consumption issues (ky v1.14.1)
+              const clonedResponse = response.clone();
+              const body = await clonedResponse.json();
               if (body && typeof body === "object" && "message" in body) {
                 error.message = String(body.message);
               }
             } catch {
-              // Response body is not JSON
+              // Response body is not JSON or already consumed
             }
           }
           return error;
@@ -95,6 +97,15 @@ function createApiClient(): KyInstance {
 }
 
 export const apiClient = createApiClient();
+
+/**
+ * Auth-specific ky instance without auth interceptors
+ * Used for token refresh to avoid circular dependency with getAuthStore
+ */
+export const authClient = ky.create({
+  prefixUrl: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT,
+});
 
 /**
  * Type-safe API request helper

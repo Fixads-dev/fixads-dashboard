@@ -11,7 +11,7 @@ interface OptimizationProgressProps {
 
 export function OptimizationProgress({ status, progress, message }: OptimizationProgressProps) {
   return (
-    <div className="space-y-4 rounded-lg border p-4">
+    <output className="block space-y-4 rounded-lg border p-4" aria-live="polite">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {status === "processing" && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
@@ -28,6 +28,6 @@ export function OptimizationProgress({ status, progress, message }: Optimization
       </div>
       <Progress value={progress} className="h-2" />
       {message && <p className="text-xs text-muted-foreground">{message}</p>}
-    </div>
+    </output>
   );
 }

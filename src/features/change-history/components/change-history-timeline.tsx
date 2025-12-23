@@ -177,8 +177,8 @@ export function ChangeHistoryTimeline({ filters }: ChangeHistoryTimelineProps) {
 
       {/* Timeline */}
       <div className="space-y-3">
-        {data.changes.map((event, index) => (
-          <ChangeEventCard key={`${event.resource_name}-${index}`} event={event} />
+        {data.changes.map((event) => (
+          <ChangeEventCard key={event.resource_name} event={event} />
         ))}
       </div>
     </div>

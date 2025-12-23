@@ -1,8 +1,10 @@
 "use client";
 
 import { Loader2, ShieldX } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
 import { ROUTES } from "@/shared/lib/constants";
 import { ADMIN_EMAIL_DOMAIN, isAdminUser } from "../types";
@@ -23,20 +25,17 @@ interface AdminGuardProps {
 export function AdminGuard({ children, fallback }: AdminGuardProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuthStore();
-  const [hasChecked, setHasChecked] = useState(false);
 
   const hasAdminAccess = user && isAdminUser(user);
 
+  // Redirect unauthenticated users to login
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace(ROUTES.LOGIN);
-      } else if (!hasAdminAccess) {
-        setHasChecked(true);
-      }
+    if (!isLoading && !isAuthenticated) {
+      router.replace(ROUTES.LOGIN);
     }
-  }, [isAuthenticated, isLoading, hasAdminAccess, router]);
+  }, [isAuthenticated, isLoading, router]);
 
+  // Show loading state while checking auth
   if (isLoading) {
     return (
       fallback ?? (
@@ -47,11 +46,13 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
     );
   }
 
+  // Unauthenticated - will redirect, show nothing
   if (!isAuthenticated) {
     return null;
   }
 
-  if (!hasAdminAccess && hasChecked) {
+  // Authenticated but no admin access - show access denied with navigation
+  if (!hasAdminAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center space-y-4">
@@ -67,18 +68,11 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
             <li>Activated account</li>
             <li>Email from {ADMIN_EMAIL_DOMAIN} domain</li>
           </ul>
+          <Button asChild className="mt-4">
+            <Link href={ROUTES.HOME}>Go to Dashboard</Link>
+          </Button>
         </div>
       </div>
-    );
-  }
-
-  if (!hasAdminAccess) {
-    return (
-      fallback ?? (
-        <div className="flex min-h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )
     );
   }
 

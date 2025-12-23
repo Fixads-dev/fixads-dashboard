@@ -1,1 +1,1 @@
-export { api, apiClient, apiMethods } from "./client";
+export { api, apiClient, apiMethods, authClient } from "./client";

@@ -53,12 +53,21 @@ function getStatusConfig(status: MABStateStatus) {
 }
 
 /**
+ * Performance thresholds for win probability coloring
+ */
+const PERFORMANCE_THRESHOLDS = {
+  HIGH: 0.1, // >= 10% = green
+  MEDIUM: 0.05, // >= 5% = yellow
+  LOW: 0.02, // >= 2% = orange
+} as const;
+
+/**
  * Get performance color based on win probability
  */
 function getPerformanceColor(probability: number): string {
-  if (probability >= 0.1) return "text-green-600";
-  if (probability >= 0.05) return "text-yellow-600";
-  if (probability >= 0.02) return "text-orange-600";
+  if (probability >= PERFORMANCE_THRESHOLDS.HIGH) return "text-green-600";
+  if (probability >= PERFORMANCE_THRESHOLDS.MEDIUM) return "text-yellow-600";
+  if (probability >= PERFORMANCE_THRESHOLDS.LOW) return "text-orange-600";
   return "text-red-600";
 }
 
@@ -227,7 +236,9 @@ export function AssetRankingTable({
                   <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                   <TableCell>
                     <div className="max-w-[200px]">
-                      <p className="font-medium truncate">{asset.asset_id.slice(0, 12)}...</p>
+                      <p className="font-medium truncate" title={asset.asset_id}>
+                        {asset.asset_id.slice(0, 12)}...
+                      </p>
                       <p className="text-xs text-muted-foreground">{asset.prior_context}</p>
                     </div>
                   </TableCell>

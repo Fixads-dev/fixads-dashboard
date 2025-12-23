@@ -28,7 +28,7 @@ export function CampaignList({ filters, onConnectAccount }: CampaignListProps) {
       }
       return true;
     });
-  }, [campaigns, filters?.status, filters?.search]);
+  }, [campaigns, filters]);
 
   if (isLoading) {
     return (

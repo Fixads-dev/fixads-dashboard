@@ -1,6 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+
+/**
+ * Safely read from localStorage with SSR support
+ */
+function getStoredValue<T>(key: string, initialValue: T): T {
+  if (typeof window === "undefined") {
+    return initialValue;
+  }
+
+  try {
+    const item = window.localStorage.getItem(key);
+    return item ? (JSON.parse(item) as T) : initialValue;
+  } catch (error) {
+    console.warn(`Error reading localStorage key "${key}":`, error);
+    return initialValue;
+  }
+}
 
 /**
  * Hook to persist state in localStorage with SSR support
@@ -11,48 +28,33 @@ export function useLocalStorage<T>(
   key: string,
   initialValue: T,
 ): [T, (value: T | ((prev: T) => T)) => void, () => void] {
-  // Get from localStorage or use initial value
-  const readValue = useCallback((): T => {
-    if (typeof window === "undefined") {
-      return initialValue;
-    }
+  // Lazy initialization to avoid SSR hydration mismatch
+  const [storedValue, setStoredValue] = useState<T>(() => getStoredValue(key, initialValue));
 
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? (JSON.parse(item) as T) : initialValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  }, [initialValue, key]);
-
-  const [storedValue, setStoredValue] = useState<T>(initialValue);
-
-  // Hydrate state from localStorage on mount
-  useEffect(() => {
-    setStoredValue(readValue());
-  }, [readValue]);
-
-  // Return a wrapped version of useState's setter function
+  // Stable setValue using functional update to avoid stale closure
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
-      try {
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
-        setStoredValue(valueToStore);
+      setStoredValue((prevValue) => {
+        try {
+          const valueToStore = value instanceof Function ? value(prevValue) : value;
 
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          }
+
+          return valueToStore;
+        } catch (error) {
+          console.warn(`Error setting localStorage key "${key}":`, error);
+          return prevValue;
         }
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
-      }
+      });
     },
-    [key, storedValue],
+    [key],
   );
 
   const removeValue = useCallback(() => {
+    setStoredValue(initialValue);
     try {
-      setStoredValue(initialValue);
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(key);
       }

@@ -1,8 +1,16 @@
 "use client";
 
+import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { AuthStore, RefreshTokenResponse, TokenPair, User } from "../types";
+import { authClient } from "@/shared/api/client";
+import type { AuthStore, TokenPair, User } from "../types";
+
+// Zod schema for runtime validation of refresh response
+const refreshTokenResponseSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string().optional(),
+});
 
 const STORAGE_KEY = "fixads-auth";
 
@@ -33,32 +41,33 @@ export const useAuthStore = create<AuthStore>()(
       setLoading: (isLoading: boolean) => set({ isLoading }),
 
       refresh: async () => {
-        const { refreshToken } = get();
-        if (!refreshToken) {
-          get().logout();
+        // Capture state upfront to avoid inconsistent reads
+        const { refreshToken, logout } = get();
+        const currentRefreshToken = refreshToken;
+
+        if (!currentRefreshToken) {
+          logout();
           return false;
         }
 
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/v1/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
+          // Use authClient (ky) for consistent error handling
+          const response = await authClient
+            .post("auth/v1/refresh", {
+              json: { refresh_token: currentRefreshToken },
+            })
+            .json();
 
-          if (!response.ok) {
-            get().logout();
-            return false;
-          }
+          // Validate response with Zod
+          const tokens = refreshTokenResponseSchema.parse(response);
 
-          const tokens = (await response.json()) as RefreshTokenResponse;
           set({
             accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token ?? get().refreshToken,
+            refreshToken: tokens.refresh_token ?? currentRefreshToken,
           });
           return true;
         } catch {
-          get().logout();
+          logout();
           return false;
         }
       },

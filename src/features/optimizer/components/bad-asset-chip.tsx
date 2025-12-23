@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BadAssetClassification } from "../types";
 
 const classificationConfig: Record<
@@ -44,13 +44,11 @@ export function BadAssetChip({ classification, showTooltip = true }: BadAssetChi
   }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>{badge}</TooltipTrigger>
-        <TooltipContent>
-          <p className="max-w-xs text-sm">{config.description}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>{badge}</TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs text-sm">{config.description}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
