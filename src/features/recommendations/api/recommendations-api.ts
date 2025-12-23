@@ -1,4 +1,13 @@
 import { apiMethods } from "@/shared/api";
+import {
+  ApplyRecommendationResponseSchema,
+  ApplyRecommendationsBatchResponseSchema,
+  DismissRecommendationResponseSchema,
+  DismissRecommendationsBatchResponseSchema,
+  parseRecommendationResponse,
+  RecommendationSchema,
+  RecommendationsResponseSchema,
+} from "../schemas/recommendations-schemas";
 import type {
   ApplyRecommendationRequest,
   ApplyRecommendationResponse,
@@ -38,8 +47,13 @@ export const recommendationsApi = {
       params.set("limit", String(filters.limit));
     }
 
-    return apiMethods.get<RecommendationsResponse>(
+    const rawResponse = await apiMethods.get<unknown>(
       `${GOOGLE_ADS_PATH}/recommendations?${params.toString()}`,
+    );
+    return parseRecommendationResponse(
+      RecommendationsResponseSchema,
+      rawResponse,
+      "getRecommendations",
     );
   },
 
@@ -52,9 +66,10 @@ export const recommendationsApi = {
     recommendationId: string,
   ): Promise<Recommendation | null> => {
     try {
-      return await apiMethods.get<Recommendation>(
+      const rawResponse = await apiMethods.get<unknown>(
         `${GOOGLE_ADS_PATH}/recommendations/${encodeURIComponent(recommendationId)}?account_id=${accountId}`,
       );
+      return parseRecommendationResponse(RecommendationSchema, rawResponse, "getRecommendation");
     } catch {
       return null;
     }
@@ -68,9 +83,14 @@ export const recommendationsApi = {
     accountId: string,
     request: ApplyRecommendationRequest,
   ): Promise<ApplyRecommendationResponse> => {
-    return apiMethods.post<ApplyRecommendationResponse>(
+    const rawResponse = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/recommendations/apply?account_id=${accountId}`,
       request,
+    );
+    return parseRecommendationResponse(
+      ApplyRecommendationResponseSchema,
+      rawResponse,
+      "applyRecommendation",
     );
   },
 
@@ -82,9 +102,14 @@ export const recommendationsApi = {
     accountId: string,
     request: ApplyRecommendationsBatchRequest,
   ): Promise<ApplyRecommendationsBatchResponse> => {
-    return apiMethods.post<ApplyRecommendationsBatchResponse>(
+    const rawResponse = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/recommendations/apply-batch?account_id=${accountId}`,
       request,
+    );
+    return parseRecommendationResponse(
+      ApplyRecommendationsBatchResponseSchema,
+      rawResponse,
+      "applyRecommendationsBatch",
     );
   },
 
@@ -96,9 +121,14 @@ export const recommendationsApi = {
     accountId: string,
     request: DismissRecommendationRequest,
   ): Promise<DismissRecommendationResponse> => {
-    return apiMethods.post<DismissRecommendationResponse>(
+    const rawResponse = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/recommendations/dismiss?account_id=${accountId}`,
       request,
+    );
+    return parseRecommendationResponse(
+      DismissRecommendationResponseSchema,
+      rawResponse,
+      "dismissRecommendation",
     );
   },
 
@@ -110,9 +140,14 @@ export const recommendationsApi = {
     accountId: string,
     request: DismissRecommendationsBatchRequest,
   ): Promise<DismissRecommendationsBatchResponse> => {
-    return apiMethods.post<DismissRecommendationsBatchResponse>(
+    const rawResponse = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/recommendations/dismiss-batch?account_id=${accountId}`,
       request,
+    );
+    return parseRecommendationResponse(
+      DismissRecommendationsBatchResponseSchema,
+      rawResponse,
+      "dismissRecommendationsBatch",
     );
   },
 

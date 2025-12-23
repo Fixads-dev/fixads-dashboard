@@ -130,7 +130,9 @@ export function UsersTable({ users, isLoading }: UsersTableProps) {
               <Badge variant={getRoleBadgeVariant(user.role)}>{formatRole(user.role)}</Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={getStatusBadgeVariant(user.status)}>{formatStatus(user.status)}</Badge>
+              <Badge variant={getStatusBadgeVariant(user.status)}>
+                {formatStatus(user.status)}
+              </Badge>
             </TableCell>
             <TableCell>
               <Badge variant={user.is_activated ? "default" : "destructive"}>
