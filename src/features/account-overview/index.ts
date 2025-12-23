@@ -5,7 +5,7 @@ export { accountOverviewApi } from "./api/account-overview-api";
 export { AccountOverviewDashboard } from "./components";
 
 // Hooks
-export { ACCOUNT_OVERVIEW_QUERY_KEYS, useAccountOverview } from "./hooks";
+export { useAccountOverview } from "./hooks";
 
 // Types
 export * from "./types";

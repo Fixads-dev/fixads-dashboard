@@ -5,7 +5,7 @@ export { changeHistoryApi } from "./api/change-history-api";
 export { ChangeHistoryTimeline } from "./components";
 
 // Hooks
-export { CHANGE_HISTORY_QUERY_KEYS, useChangeHistory } from "./hooks";
+export { useChangeHistory } from "./hooks";
 
 // Types
 export * from "./types";

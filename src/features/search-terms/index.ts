@@ -5,7 +5,7 @@ export { searchTermsApi } from "./api/search-terms-api";
 export { SearchTermsTable } from "./components";
 
 // Hooks
-export { SEARCH_TERMS_QUERY_KEYS, useSearchTerms } from "./hooks";
+export { useSearchTerms } from "./hooks";
 
 // Types
 export * from "./types";

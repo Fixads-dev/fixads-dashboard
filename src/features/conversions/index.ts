@@ -5,7 +5,7 @@ export { conversionsApi } from "./api/conversions-api";
 export { ConversionActionsList } from "./components";
 
 // Hooks
-export { CONVERSIONS_QUERY_KEYS, useConversionActions } from "./hooks";
+export { useConversionActions } from "./hooks";
 
 // Types
 export * from "./types";

@@ -1,28 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { recommendationsApi } from "../api/recommendations-api";
 import type { RecommendationFilters, RecommendationType } from "../types";
-
-/**
- * Query keys for recommendations
- */
-export const RECOMMENDATIONS_QUERY_KEYS = {
-  all: ["recommendations"] as const,
-  list: (accountId: string) => ["recommendations", accountId] as const,
-  listFiltered: (filters: RecommendationFilters) =>
-    ["recommendations", filters.account_id, filters] as const,
-  detail: (accountId: string, id: string) => ["recommendations", accountId, "detail", id] as const,
-  campaign: (accountId: string, campaignId: string) =>
-    ["recommendations", accountId, "campaign", campaignId] as const,
-};
 
 /**
  * Fetch recommendations for an account with optional filters
  */
 export function useRecommendations(filters: RecommendationFilters) {
   return useQuery({
-    queryKey: RECOMMENDATIONS_QUERY_KEYS.listFiltered(filters),
+    queryKey: QUERY_KEYS.RECOMMENDATIONS.listFiltered(filters),
     queryFn: () => recommendationsApi.getRecommendations(filters),
     enabled: !!filters.account_id,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -34,7 +22,7 @@ export function useRecommendations(filters: RecommendationFilters) {
  */
 export function useRecommendation(accountId: string, recommendationId: string) {
   return useQuery({
-    queryKey: RECOMMENDATIONS_QUERY_KEYS.detail(accountId, recommendationId),
+    queryKey: QUERY_KEYS.RECOMMENDATIONS.detail(accountId, recommendationId),
     queryFn: () => recommendationsApi.getRecommendation(accountId, recommendationId),
     enabled: !!accountId && !!recommendationId,
     staleTime: 2 * 60 * 1000,
@@ -50,7 +38,7 @@ export function useCampaignRecommendations(
   types?: RecommendationType[],
 ) {
   return useQuery({
-    queryKey: [...RECOMMENDATIONS_QUERY_KEYS.campaign(accountId, campaignId), types],
+    queryKey: [...QUERY_KEYS.RECOMMENDATIONS.campaign(accountId, campaignId), types],
     queryFn: () => recommendationsApi.getCampaignRecommendations(accountId, campaignId, types),
     enabled: !!accountId && !!campaignId,
     staleTime: 2 * 60 * 1000,

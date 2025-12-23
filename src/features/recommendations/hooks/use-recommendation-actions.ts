@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { recommendationsApi } from "../api/recommendations-api";
 import type {
   ApplyRecommendationRequest,
@@ -10,7 +11,6 @@ import type {
   DismissRecommendationsBatchRequest,
   RecommendationsResponse,
 } from "../types";
-import { RECOMMENDATIONS_QUERY_KEYS } from "./use-recommendations";
 
 /**
  * Apply a single recommendation with optimistic update
@@ -24,17 +24,17 @@ export function useApplyRecommendation(accountId: string) {
     onMutate: async (request) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       // Snapshot previous value
       const previousData = queryClient.getQueriesData<RecommendationsResponse>({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       // Optimistically remove the recommendation from all matching queries
       queryClient.setQueriesData<RecommendationsResponse>(
-        { queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId) },
+        { queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId) },
         (old) => {
           if (!old) return old;
           return {
@@ -70,7 +70,7 @@ export function useApplyRecommendation(accountId: string) {
     onSettled: () => {
       // Refetch to ensure sync with server
       queryClient.invalidateQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
     },
   });
@@ -87,17 +87,17 @@ export function useApplyRecommendationsBatch(accountId: string) {
       recommendationsApi.applyRecommendationsBatch(accountId, request),
     onMutate: async (request) => {
       await queryClient.cancelQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       const previousData = queryClient.getQueriesData<RecommendationsResponse>({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       // Optimistically remove all recommendations being applied
       const idsToRemove = new Set(request.recommendation_ids);
       queryClient.setQueriesData<RecommendationsResponse>(
-        { queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId) },
+        { queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId) },
         (old) => {
           if (!old) return old;
           const filtered = old.recommendations.filter((r) => !idsToRemove.has(r.recommendation_id));
@@ -134,7 +134,7 @@ export function useApplyRecommendationsBatch(accountId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
     },
   });
@@ -151,16 +151,16 @@ export function useDismissRecommendation(accountId: string) {
       recommendationsApi.dismissRecommendation(accountId, request),
     onMutate: async (request) => {
       await queryClient.cancelQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       const previousData = queryClient.getQueriesData<RecommendationsResponse>({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       // Optimistically mark as dismissed or remove from list
       queryClient.setQueriesData<RecommendationsResponse>(
-        { queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId) },
+        { queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId) },
         (old) => {
           if (!old) return old;
           return {
@@ -194,7 +194,7 @@ export function useDismissRecommendation(accountId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
     },
   });
@@ -211,17 +211,17 @@ export function useDismissRecommendationsBatch(accountId: string) {
       recommendationsApi.dismissRecommendationsBatch(accountId, request),
     onMutate: async (request) => {
       await queryClient.cancelQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       const previousData = queryClient.getQueriesData<RecommendationsResponse>({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
 
       // Optimistically remove all recommendations being dismissed
       const idsToRemove = new Set(request.recommendation_ids);
       queryClient.setQueriesData<RecommendationsResponse>(
-        { queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId) },
+        { queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId) },
         (old) => {
           if (!old) return old;
           const filtered = old.recommendations.filter((r) => !idsToRemove.has(r.recommendation_id));
@@ -258,7 +258,7 @@ export function useDismissRecommendationsBatch(accountId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: RECOMMENDATIONS_QUERY_KEYS.list(accountId),
+        queryKey: QUERY_KEYS.RECOMMENDATIONS.list(accountId),
       });
     },
   });

@@ -5,7 +5,6 @@ export {
   useDismissRecommendationsBatch,
 } from "./use-recommendation-actions";
 export {
-  RECOMMENDATIONS_QUERY_KEYS,
   useCampaignRecommendations,
   useCampaignRecommendationsSummary,
   useRecommendation,

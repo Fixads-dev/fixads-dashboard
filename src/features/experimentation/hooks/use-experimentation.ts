@@ -2,20 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { experimentationApi } from "../api/experimentation-api";
 import type { BeliefUpdateRequest, MABStateCreateRequest, SelectionRequest } from "../types";
-
-/**
- * Query keys for experimentation feature
- */
-export const EXPERIMENTATION_QUERY_KEYS = {
-  MAB_STATES: (accountId: string) => ["mab-states", accountId] as const,
-  MAB_STATE: (assetId: string) => ["mab-state", assetId] as const,
-  CAMPAIGN_PROBABILITIES: (campaignId: string) => ["campaign-probabilities", campaignId] as const,
-  BELIEF_HISTORY: (assetId: string) => ["belief-history", assetId] as const,
-  INDUSTRY_PRIORS: ["industry-priors"] as const,
-  PENDING_OPTIMIZATIONS: (campaignId: string) => ["pending-optimizations", campaignId] as const,
-} as const;
 
 // ==================== MAB State Hooks ====================
 
@@ -24,7 +13,7 @@ export const EXPERIMENTATION_QUERY_KEYS = {
  */
 export function useMABStates(accountId: string, campaignId?: string, platform?: string) {
   return useQuery({
-    queryKey: [...EXPERIMENTATION_QUERY_KEYS.MAB_STATES(accountId), campaignId, platform],
+    queryKey: [...QUERY_KEYS.EXPERIMENTATION.mabStates(accountId), campaignId, platform],
     queryFn: () => experimentationApi.listStates(accountId, campaignId, platform),
     enabled: !!accountId,
     staleTime: 60 * 1000, // 1 minute
@@ -36,7 +25,7 @@ export function useMABStates(accountId: string, campaignId?: string, platform?: 
  */
 export function useMABState(assetId: string, platform = "GOOGLE_ADS") {
   return useQuery({
-    queryKey: [...EXPERIMENTATION_QUERY_KEYS.MAB_STATE(assetId), platform],
+    queryKey: [...QUERY_KEYS.EXPERIMENTATION.mabState(assetId), platform],
     queryFn: () => experimentationApi.getState(assetId, platform),
     enabled: !!assetId,
     staleTime: 60 * 1000,
@@ -53,7 +42,7 @@ export function useCreateMABState() {
     mutationFn: (request: MABStateCreateRequest) => experimentationApi.createState(request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: EXPERIMENTATION_QUERY_KEYS.MAB_STATES(data.account_id),
+        queryKey: QUERY_KEYS.EXPERIMENTATION.mabStates(data.account_id),
       });
       toast.success("MAB state initialized", {
         description: `Asset ${data.asset_id.slice(0, 8)}... initialized with ${data.prior_source} prior`,
@@ -75,7 +64,7 @@ export function useCreateMABState() {
  */
 export function useCampaignProbabilities(campaignId: string, platform = "GOOGLE_ADS") {
   return useQuery({
-    queryKey: [...EXPERIMENTATION_QUERY_KEYS.CAMPAIGN_PROBABILITIES(campaignId), platform],
+    queryKey: [...QUERY_KEYS.EXPERIMENTATION.campaignProbabilities(campaignId), platform],
     queryFn: () => experimentationApi.getCampaignProbabilities(campaignId, platform),
     enabled: !!campaignId,
     staleTime: 30 * 1000, // 30 seconds - refresh frequently for live data
@@ -90,7 +79,7 @@ export function useCampaignProbabilities(campaignId: string, platform = "GOOGLE_
  */
 export function useBeliefHistory(assetId: string, limit = 50, platform?: string) {
   return useQuery({
-    queryKey: [...EXPERIMENTATION_QUERY_KEYS.BELIEF_HISTORY(assetId), limit, platform],
+    queryKey: [...QUERY_KEYS.EXPERIMENTATION.beliefHistory(assetId), limit, platform],
     queryFn: () => experimentationApi.getBeliefHistory(assetId, limit, platform),
     enabled: !!assetId,
     staleTime: 60 * 1000,
@@ -110,12 +99,12 @@ export function useUpdateBelief(campaignId?: string) {
     onSuccess: (data) => {
       // Invalidate the single asset state
       queryClient.invalidateQueries({
-        queryKey: EXPERIMENTATION_QUERY_KEYS.MAB_STATE(data.asset_id),
+        queryKey: QUERY_KEYS.EXPERIMENTATION.mabState(data.asset_id),
       });
       // Invalidate campaign probabilities if campaignId provided
       if (campaignId) {
         queryClient.invalidateQueries({
-          queryKey: EXPERIMENTATION_QUERY_KEYS.CAMPAIGN_PROBABILITIES(campaignId),
+          queryKey: QUERY_KEYS.EXPERIMENTATION.campaignProbabilities(campaignId),
         });
       }
       toast.success("Belief state updated", {
@@ -158,7 +147,7 @@ export function useSelectAssets() {
  */
 export function useIndustryPriors(platform?: string) {
   return useQuery({
-    queryKey: [...EXPERIMENTATION_QUERY_KEYS.INDUSTRY_PRIORS, platform],
+    queryKey: [...QUERY_KEYS.EXPERIMENTATION.industryPriors, platform],
     queryFn: () => experimentationApi.listIndustryPriors(platform),
     staleTime: 5 * 60 * 1000, // 5 minutes - priors rarely change
   });
@@ -171,7 +160,7 @@ export function useIndustryPriors(platform?: string) {
  */
 export function usePendingOptimizations(campaignId: string) {
   return useQuery({
-    queryKey: EXPERIMENTATION_QUERY_KEYS.PENDING_OPTIMIZATIONS(campaignId),
+    queryKey: QUERY_KEYS.EXPERIMENTATION.pendingOptimizations(campaignId),
     queryFn: () => experimentationApi.getPendingOptimizations(campaignId),
     enabled: !!campaignId,
     staleTime: 30 * 1000,

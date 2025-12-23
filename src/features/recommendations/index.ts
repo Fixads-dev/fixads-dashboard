@@ -15,7 +15,6 @@ export {
 
 // Hooks
 export {
-  RECOMMENDATIONS_QUERY_KEYS,
   useApplyRecommendation,
   useApplyRecommendationsBatch,
   useCampaignRecommendations,

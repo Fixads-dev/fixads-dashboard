@@ -5,7 +5,6 @@ export { experimentationApi } from "./api/experimentation-api";
 export { AssetRankingTable, MABStateCard, WinProbabilityChart } from "./components";
 // Hooks
 export {
-  EXPERIMENTATION_QUERY_KEYS,
   useBeliefHistory,
   useCampaignProbabilities,
   useCreateMABState,
