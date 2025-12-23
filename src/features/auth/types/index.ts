@@ -1,4 +1,16 @@
 /**
+ * User role enum - matches backend UserRole
+ * @see fixads-api/services/auth/app/domain/enums.py
+ */
+export type UserRole = "ADMIN" | "USER" | "VIEWER";
+
+/**
+ * User status enum - matches backend UserStatus
+ * @see fixads-api/services/auth/app/domain/enums.py
+ */
+export type UserStatus = "ACTIVE" | "INACTIVE" | "PENDING";
+
+/**
  * User from API response (snake_case)
  */
 export interface User {
@@ -6,8 +18,8 @@ export interface User {
   email: string;
   full_name?: string;
   picture?: string;
-  role?: string;
-  status?: string;
+  role: UserRole;
+  status: UserStatus;
   is_activated?: boolean;
   /** @deprecated Use is_activated instead */
   is_active?: boolean;

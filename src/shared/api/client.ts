@@ -2,9 +2,20 @@
 
 import ky, { type KyInstance, type Options } from "ky";
 import { getAuthStore } from "@/features/auth";
+import { CircuitBreaker, CircuitBreakerOpenError } from "@/shared/lib/circuit-breaker";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const REQUEST_TIMEOUT = 30000;
+
+/**
+ * Circuit breaker for API calls
+ * Opens after 5 consecutive failures, attempts recovery after 30 seconds
+ */
+const apiCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  resetTimeout: 30000,
+  halfOpenMaxCalls: 3,
+});
 
 /**
  * Mutex to prevent concurrent token refresh attempts
@@ -30,6 +41,15 @@ async function refreshTokenWithMutex(): Promise<boolean> {
 }
 
 /**
+ * Check if error should trigger circuit breaker
+ * Only server errors (5xx) and network errors count as failures
+ */
+function isCircuitBreakerFailure(status?: number): boolean {
+  if (!status) return true; // Network error
+  return status >= 500;
+}
+
+/**
  * Creates an authenticated ky instance with JWT token injection and refresh handling
  */
 function createApiClient(): KyInstance {
@@ -44,6 +64,15 @@ function createApiClient(): KyInstance {
     hooks: {
       beforeRequest: [
         (request) => {
+          // Check circuit breaker before making request
+          if (!apiCircuitBreaker.canExecute()) {
+            const stats = apiCircuitBreaker.getStats();
+            throw new CircuitBreakerOpenError(
+              `API temporarily unavailable (${stats.failureCount} consecutive failures)`,
+              stats,
+            );
+          }
+
           const { accessToken } = getAuthStore();
           if (accessToken) {
             request.headers.set("Authorization", `Bearer ${accessToken}`);
@@ -52,6 +81,11 @@ function createApiClient(): KyInstance {
       ],
       afterResponse: [
         async (request, options, response) => {
+          // Record success for circuit breaker (2xx-4xx responses)
+          if (response.status < 500) {
+            apiCircuitBreaker.recordSuccess();
+          }
+
           if (response.status === 401) {
             // Use mutex to prevent race condition on concurrent 401s
             const refreshed = await refreshTokenWithMutex();
@@ -77,6 +111,12 @@ function createApiClient(): KyInstance {
       beforeError: [
         async (error) => {
           const { response } = error;
+
+          // Record failure for circuit breaker (5xx or network errors)
+          if (isCircuitBreakerFailure(response?.status)) {
+            apiCircuitBreaker.recordFailure();
+          }
+
           if (response) {
             try {
               // Clone response to avoid body consumption issues (ky v1.14.1)
@@ -133,3 +173,20 @@ export const apiMethods = {
   delete: <T>(path: string, options?: Omit<Options, "method">) =>
     api<T>(path, { ...options, method: "delete" }),
 };
+
+/**
+ * Get circuit breaker statistics for monitoring
+ */
+export function getCircuitBreakerStats() {
+  return apiCircuitBreaker.getStats();
+}
+
+/**
+ * Manually reset circuit breaker (use sparingly)
+ */
+export function resetCircuitBreaker() {
+  apiCircuitBreaker.reset();
+}
+
+// Re-export circuit breaker error for type checking
+export { CircuitBreakerOpenError } from "@/shared/lib/circuit-breaker";

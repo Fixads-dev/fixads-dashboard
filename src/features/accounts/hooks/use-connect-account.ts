@@ -4,7 +4,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { accountsApi } from "../api/accounts-api";
-import type { ConnectAccountRequest, GoogleAdsOAuthCallbackParams } from "../types";
+import type {
+  ConnectAccountRequest,
+  GoogleAdsAccount,
+  GoogleAdsOAuthCallbackParams,
+} from "../types";
 
 /**
  * Hook to start the Google Ads OAuth flow
@@ -78,21 +82,43 @@ export function useConnectAccount() {
 }
 
 /**
- * Hook to disconnect an account
+ * Hook to disconnect an account with optimistic update
  */
 export function useDisconnectAccount() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: accountsApi.disconnectAccount,
+    onMutate: async (accountId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+
+      // Snapshot previous value
+      const previousAccounts = queryClient.getQueryData<GoogleAdsAccount[]>(QUERY_KEYS.ACCOUNTS);
+
+      // Optimistically remove the account
+      queryClient.setQueryData<GoogleAdsAccount[]>(QUERY_KEYS.ACCOUNTS, (old) => {
+        if (!old) return old;
+        return old.filter((account) => account.id !== accountId);
+      });
+
+      return { previousAccounts };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
       toast.success("Account disconnected");
     },
-    onError: (error) => {
+    onError: (error, _accountId, context) => {
+      // Rollback on error
+      if (context?.previousAccounts) {
+        queryClient.setQueryData(QUERY_KEYS.ACCOUNTS, context.previousAccounts);
+      }
       toast.error("Failed to disconnect account", {
         description: error.message,
       });
+    },
+    onSettled: () => {
+      // Refetch to ensure sync with server
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
     },
   });
 }

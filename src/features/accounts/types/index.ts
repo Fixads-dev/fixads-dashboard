@@ -1,4 +1,10 @@
 /**
+ * Account status enum - matches backend AccountStatus
+ * @see fixads-api/services/google-ads/app/domain/enums.py
+ */
+export type AccountStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED" | "PENDING";
+
+/**
  * Google Ads Account - matches API response (snake_case)
  */
 export interface GoogleAdsAccount {
@@ -7,7 +13,7 @@ export interface GoogleAdsAccount {
   descriptive_name: string | null;
   currency_code?: string;
   time_zone?: string;
-  status: "active" | "inactive" | "pending";
+  status: AccountStatus;
   is_manager?: boolean;
   can_manage_clients?: boolean;
   login_customer_id?: string;

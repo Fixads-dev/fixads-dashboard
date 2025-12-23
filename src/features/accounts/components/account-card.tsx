@@ -39,7 +39,7 @@ export function AccountCard({
     return id;
   };
 
-  const isConnected = account.status === "active";
+  const isConnected = account.status === "ACTIVE";
   const displayName = account.descriptive_name ?? formatCustomerId(account.customer_id);
 
   return (

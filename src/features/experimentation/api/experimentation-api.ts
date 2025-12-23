@@ -91,21 +91,20 @@ export const experimentationApi = {
 
   /**
    * Get win probabilities for all assets in a campaign
-   * GET /experimentation/api/v1/v1/campaigns/{campaignId}/probabilities?platform=GOOGLE_ADS
-   * Note: Double v1 in path matches backend route structure
+   * GET /experimentation/api/v1/campaigns/{campaignId}/probabilities?platform=GOOGLE_ADS
    */
   getCampaignProbabilities: (campaignId: string, platform = "GOOGLE_ADS") =>
     apiMethods.get<CampaignProbabilitiesResponse>(
-      `${EXPERIMENTATION_PATH}/v1/campaigns/${campaignId}/probabilities?platform=${platform}`,
+      `${EXPERIMENTATION_PATH}/campaigns/${campaignId}/probabilities?platform=${platform}`,
     ),
 
   /**
    * Get pending optimization requests for a campaign
-   * GET /experimentation/api/v1/v1/campaigns/{campaignId}/optimization-requests
+   * GET /experimentation/api/v1/campaigns/{campaignId}/optimization-requests
    */
   getPendingOptimizations: (campaignId: string) =>
     apiMethods.get<PendingOptimizationResponse>(
-      `${EXPERIMENTATION_PATH}/v1/campaigns/${campaignId}/optimization-requests`,
+      `${EXPERIMENTATION_PATH}/campaigns/${campaignId}/optimization-requests`,
     ),
 
   // ==================== Industry Priors Endpoints ====================

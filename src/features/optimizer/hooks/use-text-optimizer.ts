@@ -29,7 +29,7 @@ export function useTextOptimizerAnalyze() {
     mutationFn: ({ accountId, request }: AnalyzeParams) =>
       textOptimizerApi.analyze(accountId, request),
     onSuccess: (data) => {
-      queryClient.setQueryData(["text-optimizer-result", data.optimization_run_id], data);
+      queryClient.setQueryData(QUERY_KEYS.TEXT_OPTIMIZER_RESULT(data.optimization_run_id), data);
       toast.success("Text analysis complete", {
         description: `Found ${data.assets_to_remove.length} bad assets, generated ${data.assets_to_add.length} replacements`,
       });
@@ -48,9 +48,20 @@ export function useApplyTextChanges() {
   return useMutation({
     mutationFn: ({ accountId, request }: ApplyParams) =>
       textOptimizerApi.applyChanges(accountId, request),
-    onSuccess: (data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["asset-groups"] });
+    onSuccess: (data, { accountId, request }) => {
+      // Selective cache invalidation - only invalidate affected resources
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.CAMPAIGNS(accountId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.CAMPAIGN(accountId, request.campaign_id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.ASSET_GROUPS(request.campaign_id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.TEXT_ASSETS(request.campaign_id),
+      });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.BAD_ASSET_HISTORY(accountId),
       });
@@ -77,7 +88,7 @@ export function useBadAssetHistory(accountId: string, campaignId?: string) {
 
 export function useTargetCpa(accountId: string, campaignId: string) {
   return useQuery({
-    queryKey: ["target-cpa", accountId, campaignId],
+    queryKey: QUERY_KEYS.TARGET_CPA(accountId, campaignId),
     queryFn: () => textOptimizerApi.getTargetCpa(accountId, campaignId),
     enabled: !!accountId && !!campaignId,
   });
@@ -91,7 +102,7 @@ export function useSetTargetCpa() {
       textOptimizerApi.setTargetCpa(accountId, campaignId, request),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["target-cpa", variables.accountId, variables.campaignId],
+        queryKey: QUERY_KEYS.TARGET_CPA(variables.accountId, variables.campaignId),
       });
       const cpaDollars = data.target_cpa_micros / 1_000_000;
       toast.success(`Target CPA set to ${data.currency_code} ${cpaDollars.toFixed(2)}`);

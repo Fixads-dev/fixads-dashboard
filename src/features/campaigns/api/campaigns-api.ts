@@ -1,4 +1,11 @@
 import { apiMethods } from "@/shared/api";
+import {
+  CampaignDetailResponseSchema,
+  GaqlCampaignResponseSchema,
+  GaqlDailyMetricsResponseSchema,
+  parseGaqlResponse,
+  TextAssetsResponseSchema,
+} from "../schemas/gaql-schemas";
 import type {
   AssetGroup,
   AssetGroupWithAssets,
@@ -7,35 +14,9 @@ import type {
   CampaignFilters,
   CampaignsResponse,
   DailyMetrics,
-  TextAsset,
 } from "../types";
 
 const GOOGLE_ADS_PATH = "google-ads";
-
-/**
- * Type-safe interface for GAQL query response rows
- */
-interface GaqlCampaignRow {
-  "campaign.id"?: unknown;
-  "campaign.name"?: unknown;
-  "campaign.status"?: unknown;
-  "campaign.advertising_channel_type"?: unknown;
-  "metrics.impressions"?: unknown;
-  "metrics.clicks"?: unknown;
-  "metrics.conversions"?: unknown;
-  "metrics.cost_micros"?: unknown;
-  "metrics.conversions_value"?: unknown;
-}
-
-interface GaqlDailyMetricsRow {
-  "segments.date"?: unknown;
-  "metrics.impressions"?: unknown;
-  "metrics.clicks"?: unknown;
-  "metrics.cost_micros"?: unknown;
-  "metrics.conversions"?: unknown;
-  "metrics.ctr"?: unknown;
-  "metrics.average_cpc"?: unknown;
-}
 
 export const campaignsApi = {
   /**
@@ -70,16 +51,23 @@ export const campaignsApi = {
         AND segments.date DURING LAST_30_DAYS
     `;
 
-    const result = await apiMethods.post<{ rows: GaqlCampaignRow[] }>(
+    const rawResult = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
       { query },
     );
 
-    if (!result.rows || result.rows.length === 0) {
+    // Validate response with Zod schema
+    const result = parseGaqlResponse(
+      GaqlCampaignResponseSchema,
+      rawResult,
+      `getCampaign(${campaignId})`,
+    );
+
+    if (result.rows.length === 0) {
       throw new Error(`Campaign ${campaignId} not found`);
     }
 
-    // Aggregate metrics from multiple daily rows
+    // Aggregate metrics from multiple daily rows (already validated/transformed by Zod)
     let impressions = 0;
     let clicks = 0;
     let conversions = 0;
@@ -88,18 +76,18 @@ export const campaignsApi = {
 
     const firstRow = result.rows[0];
     for (const row of result.rows) {
-      impressions += Number(row["metrics.impressions"] ?? 0);
-      clicks += Number(row["metrics.clicks"] ?? 0);
-      conversions += Number(row["metrics.conversions"] ?? 0);
-      cost_micros += Number(row["metrics.cost_micros"] ?? 0);
-      conversions_value += Number(row["metrics.conversions_value"] ?? 0);
+      impressions += row["metrics.impressions"];
+      clicks += row["metrics.clicks"];
+      conversions += row["metrics.conversions"];
+      cost_micros += row["metrics.cost_micros"];
+      conversions_value += row["metrics.conversions_value"];
     }
 
     return {
-      campaign_id: String(firstRow["campaign.id"] ?? campaignId),
-      campaign_name: String(firstRow["campaign.name"] ?? ""),
-      status: (firstRow["campaign.status"] as Campaign["status"]) ?? "UNKNOWN",
-      campaign_type: String(firstRow["campaign.advertising_channel_type"] ?? ""),
+      campaign_id: firstRow["campaign.id"],
+      campaign_name: firstRow["campaign.name"] ?? "",
+      status: firstRow["campaign.status"],
+      campaign_type: firstRow["campaign.advertising_channel_type"],
       impressions,
       clicks,
       conversions,
@@ -120,32 +108,16 @@ export const campaignsApi = {
    */
   getCampaignDetail: async (accountId: string, campaignId: string): Promise<CampaignDetail> => {
     // Use dedicated backend endpoint that handles aggregation properly
-    const response = await apiMethods.get<{
-      campaign_id: string;
-      campaign_name: string;
-      status: string;
-      bidding_strategy_type: string | null;
-      optimization_score: number | null;
-      start_date: string | null;
-      end_date: string | null;
-      budget_amount_micros: number;
-      impressions: number;
-      clicks: number;
-      cost_micros: number;
-      conversions: number;
-      conversions_value: number;
-      all_conversions: number;
-      all_conversions_value: number;
-      view_through_conversions: number;
-      interactions: number;
-      engagements: number;
-      invalid_clicks: number;
-      ctr: number;
-      average_cpc: number;
-      average_cpm: number;
-      cost_per_conversion: number;
-      conversion_rate: number;
-    }>(`${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}?account_id=${accountId}`);
+    const rawResponse = await apiMethods.get<unknown>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}?account_id=${accountId}`,
+    );
+
+    // Validate response with Zod schema
+    const response = parseGaqlResponse(
+      CampaignDetailResponseSchema,
+      rawResponse,
+      `getCampaignDetail(${campaignId})`,
+    );
 
     const {
       impressions,
@@ -268,23 +240,31 @@ export const campaignsApi = {
         AND ${dateFilter}
       ORDER BY segments.date ASC
     `;
-    const result = await apiMethods.post<{ rows: GaqlDailyMetricsRow[] }>(
+    const rawResult = await apiMethods.post<unknown>(
       `${GOOGLE_ADS_PATH}/query?account_id=${accountId}`,
       { query },
     );
 
-    if (!result.rows || result.rows.length === 0) {
+    // Validate response with Zod schema
+    const result = parseGaqlResponse(
+      GaqlDailyMetricsResponseSchema,
+      rawResult,
+      `getDailyMetrics(${campaignId})`,
+    );
+
+    if (result.rows.length === 0) {
       return [];
     }
 
+    // Zod has already validated and transformed the data
     return result.rows.map((row) => ({
-      date: String(row["segments.date"] ?? ""),
-      impressions: Number(row["metrics.impressions"] ?? 0),
-      clicks: Number(row["metrics.clicks"] ?? 0),
-      cost_micros: Number(row["metrics.cost_micros"] ?? 0),
-      conversions: Number(row["metrics.conversions"] ?? 0),
-      ctr: Number(row["metrics.ctr"] ?? 0),
-      average_cpc: Number(row["metrics.average_cpc"] ?? 0),
+      date: row["segments.date"],
+      impressions: row["metrics.impressions"],
+      clicks: row["metrics.clicks"],
+      cost_micros: row["metrics.cost_micros"],
+      conversions: row["metrics.conversions"],
+      ctr: row["metrics.ctr"],
+      average_cpc: row["metrics.average_cpc"],
     }));
   },
 
@@ -325,25 +305,15 @@ export const campaignsApi = {
    * GET /google-ads/pmax/campaigns/{campaign_id}/text-assets?account_id=UUID
    */
   getTextAssets: async (accountId: string, campaignId: string): Promise<AssetGroupWithAssets[]> => {
-    interface BackendAsset {
-      resource_name: string;
-      field_type: string;
-      text: string;
-      status: string;
-    }
-    interface BackendAssetGroup {
-      asset_group_id: string;
-      asset_group_name: string;
-      assets: BackendAsset[];
-    }
-    interface BackendResponse {
-      campaign_id: string;
-      campaign_name: string;
-      asset_groups: BackendAssetGroup[];
-    }
-
-    const result = await apiMethods.get<BackendResponse>(
+    const rawResult = await apiMethods.get<unknown>(
       `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/text-assets?account_id=${accountId}`,
+    );
+
+    // Validate response with Zod schema
+    const result = parseGaqlResponse(
+      TextAssetsResponseSchema,
+      rawResult,
+      `getTextAssets(${campaignId})`,
     );
 
     const fieldTypeToKey: Record<string, "headlines" | "long_headlines" | "descriptions"> = {
@@ -352,7 +322,7 @@ export const campaignsApi = {
       DESCRIPTION: "descriptions",
     };
 
-    return (result.asset_groups ?? []).map((ag) => {
+    return result.asset_groups.map((ag) => {
       const group: AssetGroupWithAssets = {
         asset_group_id: ag.asset_group_id,
         asset_group_name: ag.asset_group_name,
@@ -361,14 +331,14 @@ export const campaignsApi = {
         descriptions: [],
       };
 
-      for (const asset of ag.assets ?? []) {
+      for (const asset of ag.assets) {
         const key = fieldTypeToKey[asset.field_type];
         if (key) {
           group[key].push({
             asset_id: asset.resource_name,
             asset_group_id: ag.asset_group_id,
             asset_group_name: ag.asset_group_name,
-            field_type: asset.field_type as TextAsset["field_type"],
+            field_type: asset.field_type,
             text: asset.text,
             status: asset.status,
             performance_label: undefined, // Backend doesn't include this without metrics

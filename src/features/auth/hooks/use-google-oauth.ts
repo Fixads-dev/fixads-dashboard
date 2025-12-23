@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ROUTES } from "@/shared/lib/constants";
+import { QUERY_KEYS, ROUTES } from "@/shared/lib/constants";
 import { authApi, type GoogleOAuthCallbackParams } from "../api/auth-api";
 import { useAuthStore } from "../stores/auth-store";
 
@@ -46,7 +46,7 @@ export function useCompleteGoogleOAuth() {
         : undefined;
 
       setAuth(data.user, data.fixads_token, googleAdsRefreshToken);
-      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER });
 
       // Show appropriate message based on Google Ads access
       if (data.google_ads?.has_access && googleAdsRefreshToken) {
