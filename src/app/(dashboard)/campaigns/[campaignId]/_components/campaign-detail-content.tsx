@@ -18,7 +18,16 @@ import {
 } from "@/features/campaigns";
 import type { CampaignStatus } from "@/features/campaigns/types";
 import { statusColors, statusLabels } from "./constants";
-import { AssetsTab, ExperimentationTab, OverviewTab, PerformanceTab, SettingsTab } from "./tabs";
+import {
+  AssetsTab,
+  ExperimentationTab,
+  InsightsTab,
+  OverviewTab,
+  PerformanceTab,
+  ProductsTab,
+  SettingsTab,
+  SimulationsTab,
+} from "./tabs";
 
 export function CampaignDetailContent() {
   const params = useParams();
@@ -117,9 +126,12 @@ export function CampaignDetailContent() {
 
       {/* Tabs for organized content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="simulations">Forecasts</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="experimentation">Experimentation</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -145,8 +157,25 @@ export function CampaignDetailContent() {
           />
         </TabsContent>
 
+        <TabsContent value="insights">
+          <InsightsTab
+            accountId={accountId}
+            campaignId={campaignId}
+            assetGroups={assetGroups}
+          />
+        </TabsContent>
+
+        <TabsContent value="products">
+          <ProductsTab accountId={accountId} campaignId={campaignId} />
+        </TabsContent>
+
+        <TabsContent value="simulations">
+          <SimulationsTab accountId={accountId} campaignId={campaignId} />
+        </TabsContent>
+
         <TabsContent value="assets">
           <AssetsTab
+            accountId={accountId}
             assetGroups={assetGroups}
             assetGroupsLoading={assetGroupsLoading}
             textAssets={textAssets}

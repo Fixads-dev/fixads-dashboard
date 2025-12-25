@@ -15,6 +15,7 @@ import {
   Target,
   Type,
   User2,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -58,6 +59,7 @@ const navigation = [
     items: [
       { name: "Search Terms", href: ROUTES.SEARCH_TERMS, icon: Search },
       { name: "Conversions", href: ROUTES.CONVERSIONS, icon: Target },
+      { name: "Audiences", href: ROUTES.AUDIENCES, icon: Users },
       { name: "Change History", href: ROUTES.CHANGE_HISTORY, icon: History },
     ],
   },

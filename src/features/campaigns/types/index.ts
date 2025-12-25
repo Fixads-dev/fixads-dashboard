@@ -317,3 +317,203 @@ export interface AssetGroupWithAssets {
   long_headlines: TextAsset[];
   descriptions: TextAsset[];
 }
+
+// ==================== Insights Types ====================
+
+/**
+ * Placement type for PMax ads
+ */
+export type PlacementType =
+  | "YOUTUBE_VIDEO"
+  | "YOUTUBE_CHANNEL"
+  | "GOOGLE_DISPLAY"
+  | "GOOGLE_SEARCH"
+  | "DISCOVER"
+  | "GMAIL"
+  | "MAPS"
+  | "OTHER";
+
+/**
+ * Placement data from performance_max_placement_view
+ */
+export interface Placement {
+  placement: string;
+  placement_type: PlacementType;
+  display_name: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions?: number;
+  ctr?: number;
+}
+
+export interface PlacementsResponse {
+  placements: Placement[];
+  total_count: number;
+}
+
+/**
+ * Top asset combination from asset_group_top_combination_view
+ */
+export interface TopCombination {
+  rank: number;
+  assets: {
+    field_type: AssetFieldType;
+    text: string;
+    asset_id: string;
+  }[];
+  impressions: number;
+  clicks: number;
+  conversions?: number;
+}
+
+export interface TopCombinationsResponse {
+  combinations: TopCombination[];
+  asset_group_id: string;
+  asset_group_name: string;
+}
+
+/**
+ * Performance segmented by device or network
+ */
+export type SegmentType = "device" | "network";
+export type DeviceType = "MOBILE" | "DESKTOP" | "TABLET" | "CONNECTED_TV" | "OTHER";
+export type NetworkType = "SEARCH" | "DISPLAY" | "YOUTUBE_WATCH" | "YOUTUBE_SEARCH" | "MIXED" | "CROSS_NETWORK";
+
+export interface SegmentedPerformance {
+  segment: string;
+  segment_type: SegmentType;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface SegmentedPerformanceResponse {
+  segments: SegmentedPerformance[];
+  segment_type: SegmentType;
+}
+
+// ==================== Asset Group Signals Types ====================
+
+export type SignalType = "AUDIENCE" | "SEARCH_THEME";
+
+export interface AssetGroupSignal {
+  signal_id: string;
+  signal_type: SignalType;
+  // For audience signals
+  audience_id?: string;
+  audience_name?: string;
+  // For search theme signals
+  search_theme?: string;
+}
+
+export interface SignalsResponse {
+  signals: AssetGroupSignal[];
+  asset_group_id: string;
+}
+
+export interface AddSignalRequest {
+  signal_type: SignalType;
+  audience_id?: string;
+  search_theme?: string;
+}
+
+// ==================== Shopping/Products Types ====================
+
+export interface ProductPerformance {
+  product_id: string;
+  product_title: string;
+  product_brand?: string;
+  product_category?: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  conversions_value: number;
+}
+
+export interface ProductsResponse {
+  products: ProductPerformance[];
+  total_count: number;
+}
+
+export interface ProductGroup {
+  product_group_id: string;
+  listing_group_filter: string;
+  status: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+}
+
+export interface ProductGroupsResponse {
+  product_groups: ProductGroup[];
+}
+
+// ==================== Campaign Simulations Types ====================
+
+export interface SimulationPoint {
+  value: number; // Budget or CPA/ROAS value
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+}
+
+export type SimulationType = "BUDGET" | "TARGET_CPA" | "TARGET_ROAS";
+
+export interface CampaignSimulation {
+  simulation_type: SimulationType;
+  start_date: string;
+  end_date: string;
+  points: SimulationPoint[];
+}
+
+export interface SimulationsResponse {
+  simulations: CampaignSimulation[];
+  campaign_id: string;
+}
+
+// ==================== Audiences Types ====================
+
+export type AudienceType = "CUSTOM" | "COMBINED" | "IN_MARKET" | "AFFINITY" | "REMARKETING" | "SIMILAR";
+
+export interface Audience {
+  audience_id: string;
+  audience_name: string;
+  audience_type: AudienceType;
+  description?: string;
+  member_count?: number;
+  status: string;
+}
+
+export interface AudiencesResponse {
+  audiences: Audience[];
+  total_count: number;
+}
+
+export interface UserList {
+  user_list_id: string;
+  name: string;
+  description?: string;
+  membership_status: string;
+  size_for_display?: number;
+  size_for_search?: number;
+  eligible_for_display: boolean;
+  eligible_for_search: boolean;
+}
+
+export interface UserListsResponse {
+  user_lists: UserList[];
+  total_count: number;
+}
+
+export interface CombinedAudience {
+  combined_audience_id: string;
+  name: string;
+  description?: string;
+  status: string;
+}

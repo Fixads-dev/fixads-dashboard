@@ -29,6 +29,7 @@ export const ROUTES = {
   CONVERSIONS: "/conversions",
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
+  AUDIENCES: "/audiences",
   SETTINGS: "/settings",
   ADMIN: "/admin",
 } as const;
@@ -116,6 +117,35 @@ export const QUERY_KEYS = {
   SEARCH_TERMS: {
     all: ["search-terms"] as const,
     list: <T>(filters: T) => ["search-terms", "list", filters] as const,
+  },
+
+  // ==================== Insights ====================
+  PLACEMENTS: (accountId: string, campaignId: string) =>
+    ["placements", accountId, campaignId] as const,
+  TOP_COMBINATIONS: (accountId: string, assetGroupId: string) =>
+    ["top-combinations", accountId, assetGroupId] as const,
+  SEGMENTED_PERFORMANCE: (accountId: string, campaignId: string, segmentType: string) =>
+    ["segmented-performance", accountId, campaignId, segmentType] as const,
+
+  // ==================== Asset Group Signals ====================
+  SIGNALS: (accountId: string, assetGroupId: string) =>
+    ["signals", accountId, assetGroupId] as const,
+
+  // ==================== Products ====================
+  PRODUCTS: (accountId: string, campaignId: string) =>
+    ["products", accountId, campaignId] as const,
+  PRODUCT_GROUPS: (accountId: string, campaignId: string) =>
+    ["product-groups", accountId, campaignId] as const,
+
+  // ==================== Simulations ====================
+  SIMULATIONS: (accountId: string, campaignId: string) =>
+    ["simulations", accountId, campaignId] as const,
+
+  // ==================== Audiences ====================
+  AUDIENCES: {
+    all: (accountId: string) => ["audiences", accountId] as const,
+    userLists: (accountId: string) => ["audiences", "user-lists", accountId] as const,
+    combined: (accountId: string) => ["audiences", "combined", accountId] as const,
   },
 } as const;
 
