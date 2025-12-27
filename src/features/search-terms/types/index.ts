@@ -71,3 +71,93 @@ export function getSearchTermStatusColor(status: SearchTermStatus): string {
   };
   return colors[status] || "gray";
 }
+
+// ==================== Keyword Management ====================
+
+/**
+ * Keyword match types for adding keywords
+ */
+export type KeywordMatchType = "EXACT" | "PHRASE" | "BROAD";
+
+/**
+ * Match type display labels
+ */
+export const MATCH_TYPE_LABELS: Record<KeywordMatchType, string> = {
+  EXACT: "Exact match",
+  PHRASE: "Phrase match",
+  BROAD: "Broad match",
+};
+
+/**
+ * Match type descriptions for UI
+ */
+export const MATCH_TYPE_DESCRIPTIONS: Record<KeywordMatchType, string> = {
+  EXACT: "Ads show only for this exact search term",
+  PHRASE: "Ads show for searches containing this phrase",
+  BROAD: "Ads show for related searches and variations",
+};
+
+/**
+ * Request to add a single keyword
+ */
+export interface AddKeywordRequest {
+  ad_group_id: string;
+  keyword_text: string;
+  match_type: KeywordMatchType;
+  is_negative: boolean;
+}
+
+/**
+ * Response after adding a keyword
+ */
+export interface AddKeywordResponse {
+  success: boolean;
+  resource_name: string | null;
+  keyword_text: string;
+  match_type: string;
+  is_negative: boolean;
+  error_message: string | null;
+}
+
+/**
+ * Bulk add keywords request
+ */
+export interface BulkAddKeywordsRequest {
+  keywords: AddKeywordRequest[];
+}
+
+/**
+ * Bulk add keywords response
+ */
+export interface BulkAddKeywordsResponse {
+  results: AddKeywordResponse[];
+  total_added: number;
+  total_failed: number;
+}
+
+/**
+ * Search term recommendation
+ */
+export interface SearchTermRecommendation {
+  search_term: string;
+  campaign_id: string;
+  campaign_name: string;
+  ad_group_id: string;
+  ad_group_name: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  cost_micros: number;
+  ctr: number;
+  conversion_rate: number;
+  recommended_match_type: KeywordMatchType;
+  recommendation_reason: string;
+}
+
+/**
+ * Search term recommendations response
+ */
+export interface SearchTermRecommendationsResponse {
+  recommendations: SearchTermRecommendation[];
+  total_count: number;
+}

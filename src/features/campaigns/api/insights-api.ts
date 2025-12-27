@@ -2,7 +2,11 @@ import { apiMethods } from "@/shared/api";
 import type {
   AddSignalRequest,
   AudiencesResponse,
+  AuctionInsightsResponse,
   CombinedAudience,
+  DemographicsResponse,
+  GeographicLevel,
+  GeographicPerformanceResponse,
   PlacementsResponse,
   ProductGroupsResponse,
   ProductsResponse,
@@ -10,6 +14,7 @@ import type {
   SegmentType,
   SignalsResponse,
   SimulationsResponse,
+  TimePerformanceResponse,
   TopCombinationsResponse,
   UserListsResponse,
 } from "../types";
@@ -153,4 +158,75 @@ export const insightsApi = {
     apiMethods.get<{ combined_audiences: CombinedAudience[] }>(
       `${GOOGLE_ADS_PATH}/accounts/${customerId}/combined-audiences?account_id=${accountId}`,
     ),
+
+  // ==================== Demographics ====================
+
+  /**
+   * Get demographic performance breakdown
+   * GET /google-ads/pmax/campaigns/{campaign_id}/demographics?account_id=UUID
+   */
+  getDemographics: (
+    accountId: string,
+    campaignId: string,
+    dateRange: string = "LAST_30_DAYS",
+  ) =>
+    apiMethods.get<DemographicsResponse>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/demographics?account_id=${accountId}&date_range=${dateRange}`,
+    ),
+
+  // ==================== Time Performance (Day/Hour Heatmap) ====================
+
+  /**
+   * Get time-based performance for heatmap visualization
+   * GET /google-ads/pmax/campaigns/{campaign_id}/time-performance?account_id=UUID
+   */
+  getTimePerformance: (
+    accountId: string,
+    campaignId: string,
+    dateRange: string = "LAST_30_DAYS",
+  ) =>
+    apiMethods.get<TimePerformanceResponse>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/time-performance?account_id=${accountId}&date_range=${dateRange}`,
+    ),
+
+  // ==================== Auction Insights ====================
+
+  /**
+   * Get auction insights for competitor analysis
+   * GET /google-ads/pmax/campaigns/{campaign_id}/auction-insights?account_id=UUID
+   */
+  getAuctionInsights: (
+    accountId: string,
+    campaignId: string,
+    dateRange: string = "LAST_30_DAYS",
+  ) =>
+    apiMethods.get<AuctionInsightsResponse>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/auction-insights?account_id=${accountId}&date_range=${dateRange}`,
+    ),
+
+  // ==================== Geographic Performance ====================
+
+  /**
+   * Get geographic performance with drill-down support
+   * GET /google-ads/pmax/campaigns/{campaign_id}/geographic-performance?account_id=UUID
+   */
+  getGeographicPerformance: (
+    accountId: string,
+    campaignId: string,
+    options: {
+      level?: GeographicLevel;
+      parentId?: string;
+      dateRange?: string;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+    params.set("account_id", accountId);
+    if (options.level) params.set("level", options.level);
+    if (options.parentId) params.set("parent_id", options.parentId);
+    if (options.dateRange) params.set("date_range", options.dateRange);
+
+    return apiMethods.get<GeographicPerformanceResponse>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/geographic-performance?${params.toString()}`,
+    );
+  },
 };

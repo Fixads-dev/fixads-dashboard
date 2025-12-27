@@ -12,6 +12,8 @@ export const API_PATHS = {
   AUTH: "/auth/v1",
   GOOGLE_ADS: "/google-ads/v1",
   OPTIMIZER: "/optimization/v1",
+  ALERT: "/alert/v1",
+  REPORTS: "/reports/v1",
 } as const;
 
 /**
@@ -31,6 +33,9 @@ export const ROUTES = {
   OPTIMIZER_SMART: "/optimizer/smart",
   AUDIENCES: "/audiences",
   SETTINGS: "/settings",
+  ALERTS: "/alerts",
+  REPORTS: "/reports",
+  DASHBOARDS: "/dashboards",
   ADMIN: "/admin",
 } as const;
 
@@ -146,6 +151,65 @@ export const QUERY_KEYS = {
     all: (accountId: string) => ["audiences", accountId] as const,
     userLists: (accountId: string) => ["audiences", "user-lists", accountId] as const,
     combined: (accountId: string) => ["audiences", "combined", accountId] as const,
+  },
+
+  // ==================== Demographics ====================
+  DEMOGRAPHICS: (accountId: string, campaignId: string, dateRange: string = "LAST_30_DAYS") =>
+    ["demographics", accountId, campaignId, dateRange] as const,
+
+  // ==================== Time Performance ====================
+  TIME_PERFORMANCE: (accountId: string, campaignId: string, dateRange: string = "LAST_30_DAYS") =>
+    ["time-performance", accountId, campaignId, dateRange] as const,
+
+  // ==================== Auction Insights ====================
+  AUCTION_INSIGHTS: (accountId: string, campaignId: string, dateRange: string = "LAST_30_DAYS") =>
+    ["auction-insights", accountId, campaignId, dateRange] as const,
+
+  // ==================== Geographic Performance ====================
+  GEOGRAPHIC_PERFORMANCE: (
+    accountId: string,
+    campaignId: string,
+    level: string = "country",
+    parentId?: string,
+  ) => ["geographic-performance", accountId, campaignId, level, parentId ?? "root"] as const,
+
+  // ==================== Alerts ====================
+  ALERTS: {
+    all: ["alerts"] as const,
+    rules: {
+      all: ["alerts", "rules"] as const,
+      list: <T>(params?: T) => ["alerts", "rules", "list", params] as const,
+      detail: (ruleId: string) => ["alerts", "rules", ruleId] as const,
+    },
+    history: {
+      all: ["alerts", "history"] as const,
+      list: <T>(params?: T) => ["alerts", "history", "list", params] as const,
+      unread: ["alerts", "history", "unread"] as const,
+    },
+    notifications: {
+      preferences: ["alerts", "notifications", "preferences"] as const,
+    },
+    webhooks: {
+      all: ["alerts", "webhooks"] as const,
+      list: ["alerts", "webhooks", "list"] as const,
+      detail: (webhookId: string) => ["alerts", "webhooks", webhookId] as const,
+    },
+  },
+
+  // ==================== Reports ====================
+  REPORTS: {
+    all: ["reports"] as const,
+    list: <T>(params?: T) => ["reports", "list", params] as const,
+    detail: (reportId: string) => ["reports", reportId] as const,
+    generate: (reportId: string) => ["reports", reportId, "generate"] as const,
+  },
+
+  // ==================== Dashboards ====================
+  DASHBOARDS: {
+    all: ["dashboards"] as const,
+    list: <T>(params?: T) => ["dashboards", "list", params] as const,
+    detail: (dashboardId: string) => ["dashboards", dashboardId] as const,
+    widgets: (dashboardId: string) => ["dashboards", dashboardId, "widgets"] as const,
   },
 } as const;
 

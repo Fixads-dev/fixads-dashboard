@@ -1,12 +1,20 @@
 "use client";
 
-import { AlertCircle, RefreshCw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertCircle, Loader2, Plus, RefreshCw, Search, XCircle } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useSearchTerms } from "../hooks/use-search-terms";
-import type { SearchTermsFilters } from "../types";
+import { useBulkAddKeywords, useSearchTerms } from "../hooks/use-search-terms";
+import type { KeywordMatchType, SearchTerm, SearchTermsFilters } from "../types";
+import { MATCH_TYPE_LABELS } from "../types";
 import { SearchTermsFilters as SearchTermsFiltersComponent } from "./search-terms-filters";
 import { SearchTermsTableHeader } from "./search-terms-table-header";
 import { SearchTermsTableRow } from "./search-terms-table-row";
@@ -21,10 +29,13 @@ const SKELETON_ROWS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6", "sk-7", "
 
 export function SearchTermsTable({ filters }: SearchTermsTableProps) {
   const { data, isLoading, error, refetch, isFetching } = useSearchTerms(filters);
+  const bulkAdd = useBulkAddKeywords(filters.account_id);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("impressions");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [selectedTerms, setSelectedTerms] = useState<Set<string>>(new Set());
+  const [bulkMatchType, setBulkMatchType] = useState<KeywordMatchType>("BROAD");
 
   const filteredAndSorted = useMemo(() => {
     if (!data?.search_terms) return [];
@@ -44,6 +55,18 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
     return [...filtered].sort(createComparator(sortField, sortDirection));
   }, [data?.search_terms, searchQuery, sortField, sortDirection]);
 
+  // Only terms that can be added as keywords
+  const selectableTerms = useMemo(
+    () => filteredAndSorted.filter((term) => term.status === "NONE"),
+    [filteredAndSorted],
+  );
+
+  const getTermKey = (term: SearchTerm) =>
+    `${term.search_term}-${term.campaign_id}-${term.ad_group_id}`;
+
+  const allSelected = selectableTerms.length > 0 && selectedTerms.size === selectableTerms.length;
+  const someSelected = selectedTerms.size > 0 && selectedTerms.size < selectableTerms.length;
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -51,6 +74,50 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
       setSortField(field);
       setSortDirection("desc");
     }
+  };
+
+  const handleSelectAll = useCallback(
+    (selected: boolean) => {
+      if (selected) {
+        setSelectedTerms(new Set(selectableTerms.map(getTermKey)));
+      } else {
+        setSelectedTerms(new Set());
+      }
+    },
+    [selectableTerms],
+  );
+
+  const handleSelectTerm = useCallback((term: SearchTerm, selected: boolean) => {
+    const key = getTermKey(term);
+    setSelectedTerms((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkAdd = (isNegative: boolean) => {
+    const termsToAdd = selectableTerms.filter((term) => selectedTerms.has(getTermKey(term)));
+
+    bulkAdd.mutate(
+      {
+        keywords: termsToAdd.map((term) => ({
+          ad_group_id: term.ad_group_id,
+          keyword_text: term.search_term,
+          match_type: bulkMatchType,
+          is_negative: isNegative,
+        })),
+      },
+      {
+        onSuccess: () => {
+          setSelectedTerms(new Set());
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -71,12 +138,13 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
                 <TableHead>CTR</TableHead>
                 <TableHead>Cost</TableHead>
                 <TableHead>Conversions</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {SKELETON_ROWS.map((id) => (
                 <TableRow key={id}>
-                  {[1, 2, 3, 4, 5, 6, 7].map((cell) => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((cell) => (
                     <td key={cell} className="p-4">
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -133,16 +201,81 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
         isFetching={isFetching}
       />
 
+      {/* Bulk Action Bar */}
+      {selectedTerms.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium">{selectedTerms.size} selected</span>
+          <div className="h-4 w-px bg-border" />
+          <Select
+            value={bulkMatchType}
+            onValueChange={(v) => setBulkMatchType(v as KeywordMatchType)}
+          >
+            <SelectTrigger className="w-36 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(MATCH_TYPE_LABELS) as KeywordMatchType[]).map((type) => (
+                <SelectItem key={type} value={type}>
+                  {MATCH_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={() => handleBulkAdd(false)}
+            disabled={bulkAdd.isPending}
+          >
+            {bulkAdd.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
+            Add as Keywords
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => handleBulkAdd(true)}
+            disabled={bulkAdd.isPending}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            Add as Negatives
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedTerms(new Set())}
+            disabled={bulkAdd.isPending}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-md border">
         <Table>
-          <SearchTermsTableHeader onSort={handleSort} />
+          <SearchTermsTableHeader
+            onSort={handleSort}
+            showCheckbox={selectableTerms.length > 0}
+            allSelected={allSelected}
+            someSelected={someSelected}
+            onSelectAll={handleSelectAll}
+          />
           <TableBody>
-            {filteredAndSorted.map((term) => (
-              <SearchTermsTableRow
-                key={`${term.search_term}-${term.campaign_id}-${term.ad_group_id}`}
-                term={term}
-              />
-            ))}
+            {filteredAndSorted.map((term) => {
+              const key = getTermKey(term);
+              return (
+                <SearchTermsTableRow
+                  key={key}
+                  term={term}
+                  accountId={filters.account_id}
+                  showCheckbox={selectableTerms.length > 0}
+                  selected={selectedTerms.has(key)}
+                  onSelectChange={(selected) => handleSelectTerm(term, selected)}
+                />
+              );
+            })}
           </TableBody>
         </Table>
       </div>

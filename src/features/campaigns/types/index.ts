@@ -517,3 +517,263 @@ export interface CombinedAudience {
   description?: string;
   status: string;
 }
+
+// ==================== Demographics Types ====================
+
+export type AgeRangeType =
+  | "AGE_RANGE_18_24"
+  | "AGE_RANGE_25_34"
+  | "AGE_RANGE_35_44"
+  | "AGE_RANGE_45_54"
+  | "AGE_RANGE_55_64"
+  | "AGE_RANGE_65_UP"
+  | "AGE_RANGE_UNDETERMINED"
+  | "AGE_RANGE_UNSPECIFIED";
+
+export type GenderType = "MALE" | "FEMALE" | "UNDETERMINED" | "UNKNOWN";
+
+export type IncomeRangeType =
+  | "INCOME_RANGE_TOP_10_PERCENT"
+  | "INCOME_RANGE_11_TO_20_PERCENT"
+  | "INCOME_RANGE_21_TO_30_PERCENT"
+  | "INCOME_RANGE_31_TO_40_PERCENT"
+  | "INCOME_RANGE_41_TO_50_PERCENT"
+  | "INCOME_RANGE_LOWER_50_PERCENT"
+  | "INCOME_RANGE_UNDETERMINED"
+  | "INCOME_RANGE_UNSPECIFIED";
+
+export type ParentalStatusType =
+  | "PARENT"
+  | "NOT_A_PARENT"
+  | "UNDETERMINED"
+  | "UNSPECIFIED";
+
+export interface AgeRangePerformance {
+  age_range: AgeRangeType;
+  age_range_label: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface GenderPerformance {
+  gender: GenderType;
+  gender_label: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface IncomeRangePerformance {
+  income_range: IncomeRangeType;
+  income_range_label: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface ParentalStatusPerformance {
+  parental_status: ParentalStatusType;
+  parental_status_label: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface DemographicsResponse {
+  campaign_id: string;
+  date_range: string;
+  age_ranges: AgeRangePerformance[];
+  genders: GenderPerformance[];
+  income_ranges: IncomeRangePerformance[];
+  parental_statuses: ParentalStatusPerformance[];
+}
+
+// ==================== Time Performance (Day/Hour Heatmap) Types ====================
+
+export type DayOfWeek =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
+
+export interface HourlyPerformance {
+  hour: number; // 0-23
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+}
+
+export interface DayOfWeekPerformance {
+  day_of_week: DayOfWeek;
+  day_label: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+}
+
+export interface HeatmapCell {
+  day_of_week: DayOfWeek;
+  hour: number;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  ctr: number;
+  intensity: number; // 0-1 normalized value for visualization
+}
+
+export interface TimePerformanceResponse {
+  campaign_id: string;
+  date_range: string;
+  by_hour: HourlyPerformance[];
+  by_day_of_week: DayOfWeekPerformance[];
+  heatmap: HeatmapCell[];
+  best_hours: number[];
+  best_days: DayOfWeek[];
+}
+
+// ==================== Auction Insights Types ====================
+
+export interface AuctionInsight {
+  domain: string;
+  display_name: string;
+  impression_share: number;
+  overlap_rate: number;
+  position_above_rate: number;
+  top_of_page_rate: number;
+  abs_top_of_page_rate: number;
+  outranking_share: number;
+}
+
+export interface AuctionInsightsResponse {
+  items: AuctionInsight[];
+  campaign_id: string;
+  date_range: string;
+  total: number;
+  your_impression_share: number;
+}
+
+// ==================== Geographic Performance Types ====================
+
+export type GeographicLevel = "country" | "region" | "city" | "postal";
+
+export interface GeographicPerformance {
+  location_id: string;
+  location_name: string;
+  location_type: GeographicLevel;
+  parent_id?: string;
+  country_code?: string;
+  impressions: number;
+  clicks: number;
+  cost_micros: number;
+  conversions: number;
+  conversions_value: number;
+  ctr: number;
+  average_cpc: number;
+}
+
+export interface GeographicPerformanceResponse {
+  items: GeographicPerformance[];
+  campaign_id: string;
+  date_range: string;
+  level: GeographicLevel;
+  parent_id?: string;
+  total: number;
+}
+
+// ==================== Budget Management Types ====================
+
+export type BudgetDeliveryMethod = "UNSPECIFIED" | "UNKNOWN" | "STANDARD" | "ACCELERATED";
+export type BudgetPeriod = "UNSPECIFIED" | "UNKNOWN" | "DAILY" | "CUSTOM_PERIOD";
+export type BudgetStatus = "UNSPECIFIED" | "UNKNOWN" | "ENABLED" | "REMOVED";
+export type BudgetPacingStatus = "ON_TRACK" | "UNDERSPENDING" | "OVERSPENDING" | "LIMITED";
+
+export interface CampaignBudget {
+  campaign_id: string;
+  campaign_name: string;
+  budget_id?: string;
+  budget_name?: string;
+  amount_micros: number;
+  total_amount_micros?: number;
+  status: BudgetStatus;
+  delivery_method: BudgetDeliveryMethod;
+  period: BudgetPeriod;
+  is_shared: boolean;
+  shared_campaign_count: number;
+}
+
+export interface BudgetSpend {
+  campaign_id: string;
+  campaign_name: string;
+  daily_budget_micros: number;
+  today_cost_micros: number;
+  yesterday_cost_micros: number;
+  last_7_days_cost_micros: number;
+  last_30_days_cost_micros: number;
+  avg_daily_cost_micros: number;
+  pacing_status: BudgetPacingStatus;
+  pacing_percentage: number;
+  projected_monthly_spend_micros: number;
+  days_remaining: number;
+}
+
+export interface AccountBudgetOverview {
+  account_id: string;
+  account_name?: string;
+  currency_code: string;
+  total_daily_budget_micros: number;
+  today_total_cost_micros: number;
+  yesterday_total_cost_micros: number;
+  last_30_days_total_cost_micros: number;
+  active_campaign_count: number;
+  campaigns: BudgetSpend[];
+}
+
+export interface UpdateBudgetRequest {
+  amount_micros: number;
+  delivery_method?: BudgetDeliveryMethod;
+}
+
+export interface UpdateBudgetResponse {
+  success: boolean;
+  campaign_id: string;
+  old_amount_micros: number;
+  new_amount_micros: number;
+  message?: string;
+}
+
+export interface BudgetHistoryEntry {
+  changed_at: string;
+  old_amount_micros: number;
+  new_amount_micros: number;
+  change_type: string;
+  changed_by?: string;
+}
+
+export interface BudgetHistory {
+  campaign_id: string;
+  campaign_name: string;
+  current_amount_micros: number;
+  history: BudgetHistoryEntry[];
+  total_changes: number;
+}

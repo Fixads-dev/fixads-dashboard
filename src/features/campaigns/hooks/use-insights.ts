@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { insightsApi } from "../api/insights-api";
-import type { SegmentType } from "../types";
+import type { GeographicLevel, SegmentType } from "../types";
 
 // ==================== Placements ====================
 
@@ -151,6 +151,79 @@ export function useCombinedAudiences(accountId: string, customerId: string) {
     queryKey: QUERY_KEYS.AUDIENCES.combined(accountId),
     queryFn: () => insightsApi.getCombinedAudiences(accountId, customerId),
     enabled: !!accountId && !!customerId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ==================== Demographics ====================
+
+export function useDemographics(
+  accountId: string,
+  campaignId: string,
+  dateRange: string = "LAST_30_DAYS",
+) {
+  return useQuery({
+    queryKey: QUERY_KEYS.DEMOGRAPHICS(accountId, campaignId, dateRange),
+    queryFn: () => insightsApi.getDemographics(accountId, campaignId, dateRange),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ==================== Time Performance (Heatmap) ====================
+
+export function useTimePerformance(
+  accountId: string,
+  campaignId: string,
+  dateRange: string = "LAST_30_DAYS",
+) {
+  return useQuery({
+    queryKey: QUERY_KEYS.TIME_PERFORMANCE(accountId, campaignId, dateRange),
+    queryFn: () => insightsApi.getTimePerformance(accountId, campaignId, dateRange),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ==================== Auction Insights ====================
+
+export function useAuctionInsights(
+  accountId: string,
+  campaignId: string,
+  dateRange: string = "LAST_30_DAYS",
+) {
+  return useQuery({
+    queryKey: QUERY_KEYS.AUCTION_INSIGHTS(accountId, campaignId, dateRange),
+    queryFn: () => insightsApi.getAuctionInsights(accountId, campaignId, dateRange),
+    enabled: !!accountId && !!campaignId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ==================== Geographic Performance ====================
+
+export function useGeographicPerformance(
+  accountId: string,
+  campaignId: string,
+  options: {
+    level?: GeographicLevel;
+    parentId?: string;
+    dateRange?: string;
+  } = {},
+) {
+  const level = options.level ?? "country";
+  const parentId = options.parentId;
+  const dateRange = options.dateRange ?? "LAST_30_DAYS";
+
+  return useQuery({
+    queryKey: QUERY_KEYS.GEOGRAPHIC_PERFORMANCE(accountId, campaignId, level, parentId),
+    queryFn: () =>
+      insightsApi.getGeographicPerformance(accountId, campaignId, {
+        level,
+        parentId,
+        dateRange,
+      }),
+    enabled: !!accountId && !!campaignId,
     staleTime: 5 * 60 * 1000,
   });
 }

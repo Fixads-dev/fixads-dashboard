@@ -135,6 +135,7 @@ describe("useTextOptimizer hooks", () => {
         request: {
           campaign_id: "campaign-1",
           asset_group_id: "ag-1",
+          product_description: "Test product description",
         },
       });
 
@@ -159,7 +160,7 @@ describe("useTextOptimizer hooks", () => {
 
       result.current.mutate({
         accountId: "acc-1",
-        request: { campaign_id: "campaign-1", asset_group_id: "ag-1" },
+        request: { campaign_id: "campaign-1", asset_group_id: "ag-1", product_description: "Test product" },
       });
 
       await waitFor(() => {
@@ -186,7 +187,7 @@ describe("useTextOptimizer hooks", () => {
 
       result.current.mutate({
         accountId: "acc-1",
-        request: { campaign_id: "campaign-1", asset_group_id: "ag-1" },
+        request: { campaign_id: "campaign-1", asset_group_id: "ag-1", product_description: "Test product" },
       });
 
       await waitFor(() => {
@@ -214,9 +215,10 @@ describe("useTextOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "run-123",
-          assets_to_remove: ["asset-1"],
-          assets_to_add: [{ field_type: "HEADLINE", text: "New Headline" }],
+          asset_ids_to_remove: ["asset-1"],
+          assets_to_add: [{ asset_type: "HEADLINE", text: "New Headline", category: "Scarcity", char_count: 12, compliance_passed: true }],
         },
       });
 
@@ -242,8 +244,9 @@ describe("useTextOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "run-123",
-          assets_to_remove: [],
+          asset_ids_to_remove: [],
           assets_to_add: [],
         },
       });
@@ -274,8 +277,9 @@ describe("useTextOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "run-123",
-          assets_to_remove: [],
+          asset_ids_to_remove: [],
           assets_to_add: [],
         },
       });
@@ -385,7 +389,7 @@ describe("useTextOptimizer hooks", () => {
       result.current.mutate({
         accountId: "acc-1",
         campaignId: "campaign-1",
-        request: { target_cpa_micros: 7500000 },
+        request: { target_cpa_micros: 7500000, currency_code: "USD" },
       });
 
       await waitFor(() => {
@@ -412,7 +416,7 @@ describe("useTextOptimizer hooks", () => {
       result.current.mutate({
         accountId: "acc-1",
         campaignId: "campaign-1",
-        request: { target_cpa_micros: 7500000 },
+        request: { target_cpa_micros: 7500000, currency_code: "USD" },
       });
 
       await waitFor(() => {
@@ -438,7 +442,7 @@ describe("useTextOptimizer hooks", () => {
       result.current.mutate({
         accountId: "acc-1",
         campaignId: "campaign-1",
-        request: { target_cpa_micros: -1 },
+        request: { target_cpa_micros: -1, currency_code: "USD" },
       });
 
       await waitFor(() => {

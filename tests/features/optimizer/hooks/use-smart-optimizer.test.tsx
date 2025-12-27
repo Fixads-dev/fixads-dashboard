@@ -114,7 +114,7 @@ describe("useSmartOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
-          asset_group_ids: ["ag-1"],
+          asset_group_id: "ag-1", final_url: "https://example.com",
         },
       });
 
@@ -139,7 +139,7 @@ describe("useSmartOptimizer hooks", () => {
 
       result.current.mutate({
         accountId: "acc-1",
-        request: { campaign_id: "campaign-1", asset_group_ids: ["ag-1"] },
+        request: { campaign_id: "campaign-1", asset_group_id: "ag-1", final_url: "https://example.com" },
       });
 
       await waitFor(() => {
@@ -166,7 +166,7 @@ describe("useSmartOptimizer hooks", () => {
 
       result.current.mutate({
         accountId: "acc-1",
-        request: { campaign_id: "campaign-1", asset_group_ids: ["ag-1"] },
+        request: { campaign_id: "campaign-1", asset_group_id: "ag-1", final_url: "https://example.com" },
       });
 
       await waitFor(() => {
@@ -194,9 +194,10 @@ describe("useSmartOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "smart-run-123",
-          assets_to_add: [{ asset_group_id: "ag-1", field_type: "HEADLINE", text: "New Headline" }],
-          assets_to_remove: ["asset-1"],
+          assets_to_add: [{ asset_type: "HEADLINE", text: "New Headline", char_count: 12, compliance_passed: true }],
+          asset_ids_to_remove: ["asset-1"],
         },
       });
 
@@ -222,9 +223,10 @@ describe("useSmartOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "smart-run-123",
           assets_to_add: [],
-          assets_to_remove: [],
+          asset_ids_to_remove: [],
         },
       });
 
@@ -254,9 +256,10 @@ describe("useSmartOptimizer hooks", () => {
         accountId: "acc-1",
         request: {
           campaign_id: "campaign-1",
+          asset_group_id: "ag-1",
           optimization_run_id: "smart-run-123",
           assets_to_add: [],
-          assets_to_remove: [],
+          asset_ids_to_remove: [],
         },
       });
 

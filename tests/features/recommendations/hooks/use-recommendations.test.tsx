@@ -95,7 +95,7 @@ describe("useRecommendations hooks", () => {
     });
 
     it("does not fetch when account_id is missing", () => {
-      const { result } = renderHook(() => useRecommendations({}), { wrapper });
+      const { result } = renderHook(() => useRecommendations({} as { account_id: string }), { wrapper });
 
       expect(result.current.fetchStatus).toBe("idle");
     });

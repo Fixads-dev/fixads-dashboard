@@ -1,8 +1,13 @@
 export { AssetsTab } from "./assets-tab";
+export { AuctionInsightsTab } from "./auction-insights-tab";
+export { BudgetTab } from "./budget-tab";
+export { DemographicsTab } from "./demographics-tab";
 export { ExperimentationTab } from "./experimentation-tab";
+export { GeographicTab } from "./geographic-tab";
 export { InsightsTab } from "./insights-tab";
 export { OverviewTab } from "./overview-tab";
 export { PerformanceTab } from "./performance-tab";
 export { ProductsTab } from "./products-tab";
 export { SettingsTab } from "./settings-tab";
 export { SimulationsTab } from "./simulations-tab";
+export { TimeHeatmapTab } from "./time-heatmap-tab";

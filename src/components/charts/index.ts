@@ -1,3 +1,4 @@
+export { ChartCard } from "./chart-card";
 export { ImpressionShareChart } from "./impression-share-chart";
 export { KPICard } from "./kpi-card";
 export { MetricsLineChart } from "./metrics-line-chart";

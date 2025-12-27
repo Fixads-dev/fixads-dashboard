@@ -20,13 +20,18 @@ import type { CampaignStatus } from "@/features/campaigns/types";
 import { statusColors, statusLabels } from "./constants";
 import {
   AssetsTab,
+  AuctionInsightsTab,
+  BudgetTab,
+  DemographicsTab,
   ExperimentationTab,
+  GeographicTab,
   InsightsTab,
   OverviewTab,
   PerformanceTab,
   ProductsTab,
   SettingsTab,
   SimulationsTab,
+  TimeHeatmapTab,
 } from "./tabs";
 
 export function CampaignDetailContent() {
@@ -126,10 +131,15 @@ export function CampaignDetailContent() {
 
       {/* Tabs for organized content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="flex-wrap">
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="budget">Budget</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="demographics">Demographics</TabsTrigger>
+          <TabsTrigger value="geographic">Geographic</TabsTrigger>
+          <TabsTrigger value="time-heatmap">Day/Hour</TabsTrigger>
+          <TabsTrigger value="auction">Auction</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="simulations">Forecasts</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
@@ -157,12 +167,36 @@ export function CampaignDetailContent() {
           />
         </TabsContent>
 
+        <TabsContent value="budget">
+          <BudgetTab
+            accountId={accountId}
+            campaignId={campaignId}
+            campaignName={campaign.campaign_name}
+          />
+        </TabsContent>
+
         <TabsContent value="insights">
           <InsightsTab
             accountId={accountId}
             campaignId={campaignId}
             assetGroups={assetGroups}
           />
+        </TabsContent>
+
+        <TabsContent value="demographics">
+          <DemographicsTab accountId={accountId} campaignId={campaignId} />
+        </TabsContent>
+
+        <TabsContent value="geographic">
+          <GeographicTab accountId={accountId} campaignId={campaignId} />
+        </TabsContent>
+
+        <TabsContent value="time-heatmap">
+          <TimeHeatmapTab accountId={accountId} campaignId={campaignId} />
+        </TabsContent>
+
+        <TabsContent value="auction">
+          <AuctionInsightsTab accountId={accountId} campaignId={campaignId} />
         </TabsContent>
 
         <TabsContent value="products">

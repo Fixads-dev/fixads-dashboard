@@ -1,10 +1,13 @@
 "use client";
 
 import {
+  Bell,
   Building2,
   ChevronUp,
+  FileText,
   History,
   LayoutDashboard,
+  LayoutGrid,
   Lightbulb,
   LogOut,
   Megaphone,
@@ -55,7 +58,7 @@ const navigation = [
     ],
   },
   {
-    label: "Reports",
+    label: "Analytics",
     items: [
       { name: "Search Terms", href: ROUTES.SEARCH_TERMS, icon: Search },
       { name: "Conversions", href: ROUTES.CONVERSIONS, icon: Target },
@@ -64,10 +67,24 @@ const navigation = [
     ],
   },
   {
+    label: "Reports",
+    items: [
+      { name: "Custom Reports", href: ROUTES.REPORTS, icon: FileText },
+      { name: "Dashboards", href: ROUTES.DASHBOARDS, icon: LayoutGrid },
+    ],
+  },
+  {
     label: "Optimizer",
     items: [
       { name: "Text Optimizer", href: ROUTES.OPTIMIZER_TEXT, icon: Type },
       { name: "Smart Optimizer", href: ROUTES.OPTIMIZER_SMART, icon: Sparkles },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      { name: "Alerts", href: ROUTES.ALERTS, icon: Bell },
+      { name: "Settings", href: ROUTES.SETTINGS, icon: Settings },
     ],
   },
 ];
