@@ -7,6 +7,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Download,
   ExternalLink,
   FileText,
   Loader2,
@@ -30,7 +31,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type OptimizationRunStatus, useOptimizationRun } from "@/features/optimizer";
+import {
+  type OptimizationRun,
+  type OptimizationRunStatus,
+  useOptimizationRun,
+} from "@/features/optimizer";
 import { ROUTES } from "@/shared/lib/constants";
 import { formatDate } from "@/shared/lib/format";
 
@@ -96,6 +101,52 @@ function calculateDuration(start: string, end: string): string {
   const hours = Math.floor(diffMs / 3600000);
   const mins = Math.round((diffMs % 3600000) / 60000);
   return mins > 0 ? `${hours}h ${mins}m` : `${hours} hours`;
+}
+
+function exportToCSV(run: OptimizationRun): void {
+  const duration =
+    run.completed_at && run.started_at
+      ? calculateDuration(run.started_at, run.completed_at)
+      : "-";
+
+  const headers = [
+    "Field",
+    "Value",
+  ];
+
+  const rows = [
+    ["Run ID", run.id],
+    ["Status", run.status],
+    ["Run Type", run.run_type],
+    ["Account ID", run.account_id],
+    ["Campaign ID", run.campaign_id],
+    ["Assets Analyzed", run.assets_analyzed.toString()],
+    ["Bad Assets Found", run.assets_not_good.toString()],
+    ["Assets Suggested", run.assets_suggested.toString()],
+    ["Assets Applied", run.assets_applied.toString()],
+    ["Created At", run.created_at],
+    ["Started At", run.started_at],
+    ["Completed At", run.completed_at ?? "-"],
+    ["Duration", duration],
+    ["Error Message", run.error_message ?? "-"],
+  ];
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `optimization-run-${run.id.slice(0, 8)}-${run.status.toLowerCase()}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function RunDetailContent() {
@@ -179,6 +230,10 @@ export function RunDetailContent() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportToCSV(run)}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
