@@ -23,6 +23,7 @@ export interface User {
   is_activated?: boolean;
   /** @deprecated Use is_activated instead */
   is_active?: boolean;
+  default_organization_id?: string;
   created_at?: string;
   updated_at?: string;
 }

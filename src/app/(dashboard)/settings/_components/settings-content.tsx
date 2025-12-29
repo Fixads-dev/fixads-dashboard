@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { getUserDisplayName, getUserPhotoUrl, useCurrentUser, useLogout } from "@/features/auth";
 import { formatDate } from "@/shared/lib/format";
+import { CredentialsSection } from "./credentials-section";
+import { OrganizationsSection } from "./organizations-section";
 
 export function SettingsContent() {
   const { data: user } = useCurrentUser();
@@ -91,6 +93,12 @@ export function SettingsContent() {
           </CardContent>
         </Card>
       </div>
+
+      <Separator />
+
+      <OrganizationsSection />
+
+      <CredentialsSection />
 
       <Separator />
 
