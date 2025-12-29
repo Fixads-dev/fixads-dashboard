@@ -211,3 +211,39 @@ export interface TextSuggestion {
   improvementType: "clarity" | "engagement" | "keywords" | "compliance";
   confidenceScore: number;
 }
+
+/**
+ * Optimization Run Types
+ */
+export type OptimizationRunStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
+
+export type OptimizationRunType = "MANUAL" | "SCHEDULED" | "AUTO";
+
+export interface OptimizationRun {
+  id: string;
+  user_id: string;
+  account_id: string;
+  campaign_id: string;
+  run_type: OptimizationRunType;
+  status: OptimizationRunStatus;
+  assets_analyzed: number;
+  assets_not_good: number;
+  assets_suggested: number;
+  assets_applied: number;
+  started_at: string;
+  completed_at?: string | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface OptimizationRunListResponse {
+  items: OptimizationRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}

@@ -4,6 +4,7 @@ import {
   Bell,
   Building2,
   ChevronUp,
+  Clock,
   FileText,
   History,
   LayoutDashboard,
@@ -80,6 +81,7 @@ const navigation = [
       { name: "Optimizer Hub", href: ROUTES.OPTIMIZER, icon: Wand2 },
       { name: "Text Optimizer", href: ROUTES.OPTIMIZER_TEXT, icon: Type },
       { name: "Smart Optimizer", href: ROUTES.OPTIMIZER_SMART, icon: Sparkles },
+      { name: "Run History", href: ROUTES.OPTIMIZER_HISTORY, icon: Clock },
     ],
   },
   {

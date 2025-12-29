@@ -26,6 +26,7 @@ const routeLabels: Record<string, string> = {
   optimizer: "Optimizer Hub",
   text: "Text Optimizer",
   smart: "Smart Optimizer",
+  history: "Run History",
   alerts: "Alerts",
   settings: "Settings",
 };

@@ -1,6 +1,8 @@
 import { api, apiMethods } from "@/shared/api";
 import {
   BadAssetHistoryResponseSchema,
+  OptimizationRunListResponseSchema,
+  OptimizationRunSchema,
   parseOptimizerResponse,
   TargetCpaResponseSchema,
   TextOptimizerApplyResponseSchema,
@@ -8,6 +10,9 @@ import {
 } from "../schemas/optimizer-schemas";
 import type {
   BadAssetHistoryResponse,
+  OptimizationRun,
+  OptimizationRunListResponse,
+  OptimizationRunStatus,
   TargetCpaRequest,
   TargetCpaResponse,
   TextOptimizerApplyRequest,
@@ -96,5 +101,42 @@ export const textOptimizerApi = {
       `${GOOGLE_ADS_PATH}/accounts/${accountId}/campaigns/${campaignId}/target-cpa`,
     );
     return parseOptimizerResponse(TargetCpaResponseSchema, rawResponse, "getTargetCpa");
+  },
+
+  /**
+   * List optimization runs for an account
+   * GET /google-ads/accounts/{accountId}/optimization-runs
+   */
+  listOptimizationRuns: async (
+    accountId: string,
+    options?: {
+      limit?: number;
+      offset?: number;
+      status?: OptimizationRunStatus;
+    },
+  ): Promise<OptimizationRunListResponse> => {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.status) params.set("status", options.status);
+
+    const url = `${GOOGLE_ADS_PATH}/accounts/${accountId}/optimization-runs${params.toString() ? `?${params}` : ""}`;
+    const rawResponse = await apiMethods.get<unknown>(url);
+    return parseOptimizerResponse(
+      OptimizationRunListResponseSchema,
+      rawResponse,
+      "listOptimizationRuns",
+    );
+  },
+
+  /**
+   * Get optimization run by ID
+   * GET /google-ads/optimization-runs/{runId}
+   */
+  getOptimizationRun: async (runId: string): Promise<OptimizationRun> => {
+    const rawResponse = await apiMethods.get<unknown>(
+      `${GOOGLE_ADS_PATH}/optimization-runs/${runId}`,
+    );
+    return parseOptimizerResponse(OptimizationRunSchema, rawResponse, "getOptimizationRun");
   },
 };

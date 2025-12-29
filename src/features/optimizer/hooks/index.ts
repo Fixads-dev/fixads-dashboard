@@ -5,6 +5,8 @@ export {
 export {
   useApplyTextChanges,
   useBadAssetHistory,
+  useOptimizationRun,
+  useOptimizationRuns,
   useSetTargetCpa,
   useTargetCpa,
   useTextOptimizerAnalyze,

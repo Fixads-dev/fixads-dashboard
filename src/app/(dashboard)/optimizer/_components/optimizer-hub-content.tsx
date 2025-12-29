@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Globe,
+  History,
   Link as LinkIcon,
   Loader2,
   Skull,
@@ -113,22 +114,30 @@ export function OptimizerHubContent() {
             AI-powered tools to detect and fix underperforming ad assets
           </p>
         </div>
-        {isLoadingAccounts ? (
-          <Skeleton className="h-10 w-48" />
-        ) : hasAccounts ? (
-          <Select value={accountId} onValueChange={setSelectedAccountId}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.descriptive_name || account.customer_id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={ROUTES.OPTIMIZER_HISTORY}>
+              <History className="mr-2 h-4 w-4" />
+              Run History
+            </Link>
+          </Button>
+          {isLoadingAccounts ? (
+            <Skeleton className="h-10 w-48" />
+          ) : hasAccounts ? (
+            <Select value={accountId} onValueChange={setSelectedAccountId}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.descriptive_name || account.customer_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+        </div>
       </div>
 
       {/* Optimizer Cards */}

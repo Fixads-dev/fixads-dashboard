@@ -32,6 +32,7 @@ export const ROUTES = {
   OPTIMIZER: "/optimizer",
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
+  OPTIMIZER_HISTORY: "/optimizer/history",
   AUDIENCES: "/audiences",
   SETTINGS: "/settings",
   ALERTS: "/alerts",
@@ -106,6 +107,9 @@ export const QUERY_KEYS = {
   SMART_OPTIMIZER_RESULT: (runId: string) => ["smart-optimizer-result", runId] as const,
   TEXT_OPTIMIZER_RESULT: (runId: string) => ["text-optimizer-result", runId] as const,
   BAD_ASSET_HISTORY: (accountId: string) => ["bad-asset-history", accountId] as const,
+  OPTIMIZATION_RUNS: <T>(accountId: string, options?: T) =>
+    ["optimization-runs", accountId, options] as const,
+  OPTIMIZATION_RUN: (runId: string) => ["optimization-run", runId] as const,
 
   // ==================== Recommendations ====================
   RECOMMENDATIONS: {

@@ -201,6 +201,60 @@ export const BadAssetHistoryResponseSchema = z.object({
 export type BadAssetHistoryResponse = z.infer<typeof BadAssetHistoryResponseSchema>;
 
 /**
+ * Optimization Run Status schema
+ */
+export const OptimizationRunStatusSchema = z.enum([
+  "PENDING",
+  "RUNNING",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+]);
+
+export type OptimizationRunStatus = z.infer<typeof OptimizationRunStatusSchema>;
+
+/**
+ * Optimization Run Type schema
+ */
+export const OptimizationRunTypeSchema = z.enum(["MANUAL", "SCHEDULED", "AUTO"]);
+
+export type OptimizationRunType = z.infer<typeof OptimizationRunTypeSchema>;
+
+/**
+ * Optimization Run schema
+ */
+export const OptimizationRunSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  account_id: z.string(),
+  campaign_id: z.string(),
+  run_type: OptimizationRunTypeSchema,
+  status: OptimizationRunStatusSchema,
+  assets_analyzed: z.number(),
+  assets_not_good: z.number(),
+  assets_suggested: z.number(),
+  assets_applied: z.number(),
+  started_at: z.string(),
+  completed_at: z.string().optional().nullable(),
+  error_message: z.string().optional().nullable(),
+  created_at: z.string(),
+});
+
+export type OptimizationRun = z.infer<typeof OptimizationRunSchema>;
+
+/**
+ * Optimization Run List Response schema
+ */
+export const OptimizationRunListResponseSchema = z.object({
+  items: z.array(OptimizationRunSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+export type OptimizationRunListResponse = z.infer<typeof OptimizationRunListResponseSchema>;
+
+/**
  * Helper to safely parse optimizer response with validation
  * Returns parsed data or throws with detailed error message
  */

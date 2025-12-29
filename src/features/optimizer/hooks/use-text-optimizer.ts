@@ -150,3 +150,28 @@ export function useSetTargetCpa() {
     },
   });
 }
+
+// Optimization Run hooks
+export function useOptimizationRuns(
+  accountId: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+    status?: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  },
+) {
+  return useQuery({
+    queryKey: QUERY_KEYS.OPTIMIZATION_RUNS(accountId, options),
+    queryFn: () => textOptimizerApi.listOptimizationRuns(accountId, options),
+    enabled: !!accountId,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function useOptimizationRun(runId: string) {
+  return useQuery({
+    queryKey: QUERY_KEYS.OPTIMIZATION_RUN(runId),
+    queryFn: () => textOptimizerApi.getOptimizationRun(runId),
+    enabled: !!runId,
+  });
+}
