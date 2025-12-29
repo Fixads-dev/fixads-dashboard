@@ -3,14 +3,13 @@
 import { useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Download,
   Filter,
   History,
-  Loader2,
   Play,
   RefreshCw,
   Sparkles,
@@ -22,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -98,11 +98,77 @@ const RUN_TYPE_CONFIG = {
 
 const PAGE_SIZE = 20;
 
+function calculateDurationForExport(start: string, end: string | null | undefined): string {
+  if (!end) return "-";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diffMs = endDate.getTime() - startDate.getTime();
+  if (diffMs < 1000) return "<1s";
+  if (diffMs < 60000) return `${Math.round(diffMs / 1000)}s`;
+  if (diffMs < 3600000) return `${Math.round(diffMs / 60000)}m`;
+  return `${Math.round(diffMs / 3600000)}h`;
+}
+
+function exportRunsToCSV(runs: OptimizationRun[]): void {
+  const headers = [
+    "Run ID",
+    "Status",
+    "Run Type",
+    "Account ID",
+    "Campaign ID",
+    "Assets Analyzed",
+    "Bad Assets Found",
+    "Assets Suggested",
+    "Assets Applied",
+    "Created At",
+    "Started At",
+    "Completed At",
+    "Duration",
+    "Error Message",
+  ];
+
+  const rows = runs.map((run) => [
+    run.id,
+    run.status,
+    run.run_type,
+    run.account_id,
+    run.campaign_id,
+    run.assets_analyzed.toString(),
+    run.assets_not_good.toString(),
+    run.assets_suggested.toString(),
+    run.assets_applied.toString(),
+    run.created_at,
+    run.started_at,
+    run.completed_at ?? "-",
+    calculateDurationForExport(run.started_at, run.completed_at),
+    run.error_message ?? "-",
+  ]);
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const timestamp = new Date().toISOString().slice(0, 10);
+  link.download = `optimization-runs-${timestamp}-${runs.length}-items.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function HistoryContent() {
   const { data: accounts, isPending: isLoadingAccounts } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<OptimizationRunStatus | "ALL">("ALL");
   const [page, setPage] = useState(0);
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(new Set());
 
   // Auto-select first account
   const accountId = selectedAccountId || accounts?.[0]?.id || "";
@@ -133,6 +199,42 @@ export function HistoryContent() {
     setPage(0);
   };
 
+  const toggleRunSelection = (runId: string) => {
+    setSelectedRunIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(runId)) {
+        next.delete(runId);
+      } else {
+        next.add(runId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRunIds.size === runs.length) {
+      setSelectedRunIds(new Set());
+    } else {
+      setSelectedRunIds(new Set(runs.map((r) => r.id)));
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selectedRuns = runs.filter((r) => selectedRunIds.has(r.id));
+    if (selectedRuns.length > 0) {
+      exportRunsToCSV(selectedRuns);
+    }
+  };
+
+  const handleExportAll = () => {
+    if (runs.length > 0) {
+      exportRunsToCSV(runs);
+    }
+  };
+
+  const isAllSelected = runs.length > 0 && selectedRunIds.size === runs.length;
+  const isSomeSelected = selectedRunIds.size > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -144,6 +246,22 @@ export function HistoryContent() {
           </p>
         </div>
         <div className="flex gap-2">
+          {isSomeSelected ? (
+            <Button variant="outline" size="sm" onClick={handleBulkExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Selected ({selectedRunIds.size})
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportAll}
+              disabled={runs.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export All
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
@@ -278,6 +396,13 @@ export function HistoryContent() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Campaign</TableHead>
@@ -291,7 +416,12 @@ export function HistoryContent() {
                   </TableHeader>
                   <TableBody>
                     {runs.map((run) => (
-                      <RunRow key={run.id} run={run} />
+                      <RunRow
+                        key={run.id}
+                        run={run}
+                        isSelected={selectedRunIds.has(run.id)}
+                        onToggleSelect={toggleRunSelection}
+                      />
                     ))}
                   </TableBody>
                 </Table>
@@ -334,7 +464,15 @@ export function HistoryContent() {
   );
 }
 
-function RunRow({ run }: { run: OptimizationRun }) {
+function RunRow({
+  run,
+  isSelected,
+  onToggleSelect,
+}: {
+  run: OptimizationRun;
+  isSelected: boolean;
+  onToggleSelect: (runId: string) => void;
+}) {
   const router = useRouter();
   const statusConfig = STATUS_CONFIG[run.status];
   const StatusIcon = statusConfig.icon;
@@ -348,15 +486,27 @@ function RunRow({ run }: { run: OptimizationRun }) {
       ? "In progress..."
       : "-";
 
-  const handleClick = () => {
+  const handleRowClick = () => {
     router.push(ROUTES.OPTIMIZER_RUN_DETAIL(run.id));
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleSelect(run.id);
   };
 
   return (
     <TableRow
       className="cursor-pointer hover:bg-muted/50 transition-colors"
-      onClick={handleClick}
+      onClick={handleRowClick}
     >
+      <TableCell onClick={handleCheckboxClick}>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggleSelect(run.id)}
+          aria-label={`Select run ${run.id}`}
+        />
+      </TableCell>
       <TableCell>
         <Badge className={`${statusConfig.bgColor} ${statusConfig.color} border-0`}>
           <StatusIcon className="mr-1 h-3 w-3" />
