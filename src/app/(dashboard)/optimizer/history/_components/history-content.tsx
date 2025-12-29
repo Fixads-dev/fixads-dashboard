@@ -19,6 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -334,6 +335,7 @@ export function HistoryContent() {
 }
 
 function RunRow({ run }: { run: OptimizationRun }) {
+  const router = useRouter();
   const statusConfig = STATUS_CONFIG[run.status];
   const StatusIcon = statusConfig.icon;
   const runTypeConfig = RUN_TYPE_CONFIG[run.run_type];
@@ -346,8 +348,15 @@ function RunRow({ run }: { run: OptimizationRun }) {
       ? "In progress..."
       : "-";
 
+  const handleClick = () => {
+    router.push(ROUTES.OPTIMIZER_RUN_DETAIL(run.id));
+  };
+
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={handleClick}
+    >
       <TableCell>
         <Badge className={`${statusConfig.bgColor} ${statusConfig.color} border-0`}>
           <StatusIcon className="mr-1 h-3 w-3" />
@@ -391,7 +400,10 @@ function RunRow({ run }: { run: OptimizationRun }) {
         <span className="text-sm">{formatDate(run.started_at, "MMM d, HH:mm")}</span>
       </TableCell>
       <TableCell>
-        <span className="text-sm text-muted-foreground">{duration}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground">{duration}</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
       </TableCell>
     </TableRow>
   );

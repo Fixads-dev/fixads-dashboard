@@ -33,6 +33,7 @@ export const ROUTES = {
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
   OPTIMIZER_HISTORY: "/optimizer/history",
+  OPTIMIZER_RUN_DETAIL: (runId: string) => `/optimizer/history/${runId}`,
   AUDIENCES: "/audiences",
   SETTINGS: "/settings",
   ALERTS: "/alerts",
