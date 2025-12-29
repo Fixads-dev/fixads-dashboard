@@ -1,7 +1,8 @@
 "use client";
 
 import { Link, Loader2, Play, Sparkles, Wand2 } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,20 @@ const getRemovalId = (asset: AssetToRemove): string =>
   asset.asset_group_asset_resource_name || asset.asset_id;
 
 export function SmartOptimizerContent() {
+  const searchParams = useSearchParams();
+
   // Selection state
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [selectedAssetGroupId, setSelectedAssetGroupId] = useState("");
+
+  // Pre-select from URL params (for re-run from history)
+  useEffect(() => {
+    const accountId = searchParams.get("accountId");
+    const campaignId = searchParams.get("campaignId");
+    if (accountId) setSelectedAccountId(accountId);
+    if (campaignId) setSelectedCampaignId(campaignId);
+  }, [searchParams]);
   const [finalUrl, setFinalUrl] = useState("");
   const [assetFieldTypes, setAssetFieldTypes] = useState<Set<string>>(
     new Set(["HEADLINE", "DESCRIPTION"]),

@@ -1,7 +1,8 @@
 "use client";
 
 import { Globe, Loader2, Play, Sparkles, Type } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,12 +32,22 @@ const getRemovalId = (asset: AssetToRemove): string =>
   asset.asset_group_asset_resource_name || asset.asset_id;
 
 export function TextOptimizerContent() {
+  const searchParams = useSearchParams();
+
   // Selection state
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [selectedAssetGroupId, setSelectedAssetGroupId] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
+
+  // Pre-select from URL params (for re-run from history)
+  useEffect(() => {
+    const accountId = searchParams.get("accountId");
+    const campaignId = searchParams.get("campaignId");
+    if (accountId) setSelectedAccountId(accountId);
+    if (campaignId) setSelectedCampaignId(campaignId);
+  }, [searchParams]);
 
   // Results state
   const [analysisResult, setAnalysisResult] = useState<TextOptimizerResponse | null>(null);

@@ -183,11 +183,13 @@ export function RunDetailContent() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          {run.status === "COMPLETED" && (
+          {(run.status === "COMPLETED" || run.status === "FAILED") && (
             <Button asChild size="sm">
-              <Link href={ROUTES.OPTIMIZER}>
+              <Link
+                href={`${ROUTES.OPTIMIZER_TEXT}?accountId=${run.account_id}&campaignId=${run.campaign_id}`}
+              >
                 <Sparkles className="mr-2 h-4 w-4" />
-                Run Again
+                Re-run Optimization
               </Link>
             </Button>
           )}
