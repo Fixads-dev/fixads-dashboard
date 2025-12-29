@@ -23,7 +23,7 @@ const routeLabels: Record<string, string> = {
   "": "Dashboard",
   accounts: "Accounts",
   campaigns: "Campaigns",
-  optimizer: "Optimizer",
+  optimizer: "Optimizer Hub",
   text: "Text Optimizer",
   smart: "Smart Optimizer",
   alerts: "Alerts",

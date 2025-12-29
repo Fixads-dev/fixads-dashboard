@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
-
-import { ROUTES } from "@/shared/lib/constants";
+import { OptimizerHubContent } from "./_components";
 
 export default function OptimizerPage() {
-  redirect(ROUTES.OPTIMIZER_TEXT);
+  return <OptimizerHubContent />;
 }

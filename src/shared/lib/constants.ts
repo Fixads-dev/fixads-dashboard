@@ -29,6 +29,7 @@ export const ROUTES = {
   SEARCH_TERMS: "/search-terms",
   CHANGE_HISTORY: "/change-history",
   CONVERSIONS: "/conversions",
+  OPTIMIZER: "/optimizer",
   OPTIMIZER_TEXT: "/optimizer/text",
   OPTIMIZER_SMART: "/optimizer/smart",
   AUDIENCES: "/audiences",

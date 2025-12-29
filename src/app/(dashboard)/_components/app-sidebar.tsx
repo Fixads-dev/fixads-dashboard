@@ -19,6 +19,7 @@ import {
   Type,
   User2,
   Users,
+  Wand2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -76,6 +77,7 @@ const navigation = [
   {
     label: "Optimizer",
     items: [
+      { name: "Optimizer Hub", href: ROUTES.OPTIMIZER, icon: Wand2 },
       { name: "Text Optimizer", href: ROUTES.OPTIMIZER_TEXT, icon: Type },
       { name: "Smart Optimizer", href: ROUTES.OPTIMIZER_SMART, icon: Sparkles },
     ],
