@@ -9,7 +9,7 @@ export const APP_DESCRIPTION = "Optimize your Google Ads Performance Max campaig
  * API endpoints base paths
  */
 export const API_PATHS = {
-  AUTH: "/auth/v1",
+  AUTH: "/v1",
   GOOGLE_ADS: "/google-ads/v1",
   OPTIMIZER: "/optimization/v1",
   ALERT: "/alert/v1",
