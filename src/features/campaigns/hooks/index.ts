@@ -1,4 +1,5 @@
 export {
+  useAllAccountsCampaigns,
   useAssetGroups,
   useCampaign,
   useCampaignDetail,

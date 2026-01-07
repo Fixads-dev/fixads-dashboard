@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/shared/lib/constants";
 import { campaignsApi } from "../api/campaigns-api";
-import type { CampaignFilters } from "../types";
+import type { AccountCampaigns, CampaignFilters, CampaignStatus, GroupedCampaignsData } from "../types";
 
 export function useCampaigns(filters?: CampaignFilters) {
   return useQuery({
@@ -57,4 +57,34 @@ export function useTextAssets(accountId: string, campaignId: string) {
     enabled: !!accountId && !!campaignId,
     staleTime: 2 * 60 * 1000,
   });
+}
+
+/**
+ * Fetch campaigns for all accounts using single endpoint
+ * Returns campaigns grouped by account for the "All Accounts" view
+ * Uses GET /google-ads/v1/pmax/campaigns/all
+ */
+export function useAllAccountsCampaigns(status?: CampaignStatus): GroupedCampaignsData {
+  const query = useQuery({
+    queryKey: [...QUERY_KEYS.CAMPAIGNS("all"), "grouped", status],
+    queryFn: () => campaignsApi.getAllCampaigns(status),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const accountCampaigns: AccountCampaigns[] = (query.data?.accounts ?? []).map((account) => ({
+    account_id: account.account_id,
+    account_name: account.account_name || `Account ${account.customer_id}`,
+    customer_id: account.customer_id,
+    campaigns: account.campaigns,
+    isLoading: false,
+    isError: !!account.error,
+    error: account.error,
+  }));
+
+  return {
+    accounts: accountCampaigns,
+    totalCampaigns: query.data?.total_campaigns ?? 0,
+    isLoading: query.isLoading,
+    isError: query.isError,
+  };
 }

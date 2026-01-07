@@ -7,12 +7,14 @@ import {
   TextAssetsResponseSchema,
 } from "../schemas/gaql-schemas";
 import type {
+  AllCampaignsResponse,
   AssetGroup,
   AssetGroupWithAssets,
   Campaign,
   CampaignDetail,
   CampaignFilters,
   CampaignsResponse,
+  CampaignStatus,
   DailyMetrics,
 } from "../types";
 
@@ -31,6 +33,20 @@ export const campaignsApi = {
     const queryString = params.toString();
     return apiMethods.get<CampaignsResponse>(
       `${GOOGLE_ADS_PATH}/pmax/campaigns${queryString ? `?${queryString}` : ""}`,
+    );
+  },
+
+  /**
+   * Get all PMax campaigns from all connected accounts
+   * GET /google-ads/v1/pmax/campaigns/all
+   * Returns campaigns grouped by account with parallel server-side fetching
+   */
+  getAllCampaigns: (status?: CampaignStatus) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    const queryString = params.toString();
+    return apiMethods.get<AllCampaignsResponse>(
+      `${GOOGLE_ADS_PATH}/pmax/campaigns/all${queryString ? `?${queryString}` : ""}`,
     );
   },
 

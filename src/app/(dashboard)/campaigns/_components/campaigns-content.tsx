@@ -12,7 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAccounts, useStartConnectAccount } from "@/features/accounts";
-import { type CampaignFilters, CampaignList, type CampaignStatus } from "@/features/campaigns";
+import {
+  type CampaignFilters,
+  CampaignList,
+  type CampaignStatus,
+  GroupedCampaignList,
+  useAllAccountsCampaigns,
+} from "@/features/campaigns";
 import { useDebounce } from "@/shared/hooks";
 
 const statusOptions: Array<{ value: CampaignStatus | "ALL"; label: string }> = [
@@ -33,6 +39,10 @@ export function CampaignsContent() {
 
   const { data: accounts } = useAccounts();
   const { mutate: connectAccount } = useStartConnectAccount();
+
+  // Grouped campaigns for "All Accounts" view (single API call)
+  const isAllAccounts = !accountId;
+  const groupedData = useAllAccountsCampaigns(isAllAccounts ? status : undefined);
 
   const filters: CampaignFilters = {
     account_id: accountId,
@@ -98,7 +108,16 @@ export function CampaignsContent() {
         </Select>
       </div>
 
-      <CampaignList filters={filters} onConnectAccount={() => connectAccount()} />
+      {isAllAccounts ? (
+        <GroupedCampaignList
+          data={groupedData}
+          accounts={accounts}
+          filters={filters}
+          onConnectAccount={() => connectAccount()}
+        />
+      ) : (
+        <CampaignList filters={filters} onConnectAccount={() => connectAccount()} />
+      )}
     </div>
   );
 }

@@ -777,3 +777,57 @@ export interface BudgetHistory {
   history: BudgetHistoryEntry[];
   total_changes: number;
 }
+
+// ==================== Grouped Campaigns Types ====================
+
+/**
+ * Campaign with account information for grouped display
+ */
+export interface CampaignWithAccount extends Campaign {
+  account_id: string;
+  account_name: string;
+}
+
+/**
+ * Account with its campaigns from the /pmax/campaigns/all endpoint
+ */
+export interface AccountCampaignsResponse {
+  account_id: string;
+  customer_id: string;
+  account_name: string;
+  campaigns: Campaign[];
+  error: string | null;
+}
+
+/**
+ * Response from GET /google-ads/v1/pmax/campaigns/all
+ */
+export interface AllCampaignsResponse {
+  accounts: AccountCampaignsResponse[];
+  total_campaigns: number;
+  total_accounts: number;
+  failed_accounts: number;
+}
+
+/**
+ * Account with its campaigns for grouped display (UI state)
+ */
+export interface AccountCampaigns {
+  account_id: string;
+  account_name: string;
+  customer_id: string;
+  campaigns: Campaign[];
+  isLoading: boolean;
+  isError: boolean;
+  error?: string | null;
+}
+
+/**
+ * Response from fetching all campaigns grouped by account (UI state)
+ */
+export interface GroupedCampaignsData {
+  accounts: AccountCampaigns[];
+  totalCampaigns: number;
+  isLoading: boolean;
+  isError: boolean;
+}
