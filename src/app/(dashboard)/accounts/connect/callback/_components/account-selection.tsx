@@ -110,18 +110,27 @@ export function AccountSelection({ customers, onConnect, isConnecting }: Account
             const isMCC = customer.is_manager;
 
             return (
-              <button
+              <div
                 key={customer.customer_id}
-                type="button"
-                disabled={isMCC}
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-disabled={isMCC}
+                tabIndex={isMCC ? -1 : 0}
                 className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors w-full text-left ${
                   isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
                 } ${isMCC ? "opacity-60 cursor-not-allowed" : ""}`}
                 onClick={() => !isMCC && toggleAccount(customer.customer_id)}
+                onKeyDown={(e) => {
+                  if (!isMCC && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    toggleAccount(customer.customer_id);
+                  }
+                }}
               >
                 <Checkbox
                   checked={isSelected}
                   disabled={isMCC}
+                  tabIndex={-1}
                   onCheckedChange={() => toggleAccount(customer.customer_id)}
                 />
                 <div className="flex-1 min-w-0">
@@ -141,7 +150,7 @@ export function AccountSelection({ customers, onConnect, isConnecting }: Account
                   </span>
                 </div>
                 {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-              </button>
+              </div>
             );
           })}
         </div>

@@ -14,6 +14,16 @@ import {
 import { ROUTES } from "@/shared/lib/constants";
 import { AccountSelection } from "./account-selection";
 
+// Module-level state to survive HMR remounts
+// This is the key fix - HMR replaces the module but we store the Promise externally
+let oauthPromise: Promise<void> | null = null;
+let oauthResult: {
+  type: "selecting" | "success" | "error";
+  customers?: AccessibleCustomer[];
+  refreshToken?: string;
+  error?: string;
+} | null = null;
+
 type ConnectionStep =
   | "exchanging"
   | "fetching_customers"
@@ -25,7 +35,7 @@ type ConnectionStep =
 export function ConnectCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const hasProcessed = useRef(false);
+  const hasStarted = useRef(false);
   const [step, setStep] = useState<ConnectionStep>("exchanging");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [customers, setCustomers] = useState<AccessibleCustomer[]>([]);
@@ -36,94 +46,130 @@ export function ConnectCallbackContent() {
   const getAccessibleCustomers = useGetAccessibleCustomers();
   const connectAccount = useConnectAccount();
 
-  // Use refs for mutation functions to avoid stale closures in useEffect
-  const exchangeTokensRef = useRef(exchangeTokens);
-  const getAccessibleCustomersRef = useRef(getAccessibleCustomers);
-  const connectAccountRef = useRef(connectAccount);
-
-  // Keep refs updated
-  exchangeTokensRef.current = exchangeTokens;
-  getAccessibleCustomersRef.current = getAccessibleCustomers;
-  connectAccountRef.current = connectAccount;
-
-  // Memoized process function to handle the OAuth flow
+  // Process OAuth callback using async/await pattern
+  // This survives HMR because we store the Promise at module level
   const processOAuthCallback = useCallback(
-    (code: string, state: string) => {
+    async (code: string, state: string): Promise<void> => {
       const redirectUri = `${window.location.origin}/accounts/connect/callback`;
 
-      // Step 1: Exchange code for tokens
-      setStep("exchanging");
-      exchangeTokensRef.current.mutate(
-        { code, state, redirect_uri: redirectUri },
-        {
-          onSuccess: (tokenData) => {
-            setRefreshToken(tokenData.refresh_token);
+      try {
+        // Step 1: Exchange code for tokens
+        console.log("[OAuth] Step 1: Exchanging code for tokens", { code: code.slice(0, 20) + "..." });
+        setStep("exchanging");
 
-            // Step 2: Fetch accessible customers
-            setStep("fetching_customers");
-            getAccessibleCustomersRef.current.mutate(tokenData.refresh_token, {
-              onSuccess: (customerData) => {
-                const fetchedCustomers = customerData.customers;
+        const tokenData = await exchangeTokens.mutateAsync({
+          code,
+          state,
+          redirect_uri: redirectUri,
+        });
 
-                if (fetchedCustomers.length === 0) {
-                  setStep("error");
-                  setErrorMessage(
-                    "No Google Ads accounts found. Please ensure you have access to at least one Google Ads account.",
-                  );
-                  return;
-                }
+        console.log("[OAuth] Step 1 SUCCESS: Got tokens", {
+          hasAccessToken: !!tokenData.access_token,
+          hasRefreshToken: !!tokenData.refresh_token,
+          refreshTokenLength: tokenData.refresh_token?.length || 0,
+        });
 
-                // If only one regular account, auto-connect it
-                const regularAccounts = fetchedCustomers.filter((c) => !c.is_manager);
-                if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
-                  // Single account, auto-connect
-                  const customer = fetchedCustomers[0];
-                  setStep("connecting");
-                  connectAccountRef.current.mutate(
-                    {
-                      customer_id: customer.customer_id,
-                      refresh_token: tokenData.refresh_token,
-                      login_customer_id: customer.is_manager ? customer.customer_id : undefined,
-                    },
-                    {
-                      onSuccess: () => {
-                        setStep("success");
-                        router.replace(ROUTES.ACCOUNTS);
-                      },
-                      onError: (error) => {
-                        setStep("error");
-                        setErrorMessage(error.message || "Failed to connect account");
-                      },
-                    },
-                  );
-                } else {
-                  // Multiple accounts or MCC detected - show selection UI
-                  setCustomers(fetchedCustomers);
-                  setStep("selecting");
-                }
-              },
-              onError: (error) => {
-                setStep("error");
-                setErrorMessage(error.message || "Failed to fetch accessible accounts");
-              },
-            });
-          },
-          onError: (error) => {
-            setStep("error");
-            setErrorMessage(error.message || "Failed to exchange authorization code");
-          },
-        },
-      );
+        if (!tokenData.refresh_token) {
+          throw new Error("OAuth succeeded but no refresh token was returned. Please try again.");
+        }
+
+        // Step 2: Fetch accessible customers
+        console.log("[OAuth] Step 2: Fetching accessible customers");
+        setStep("fetching_customers");
+
+        const customerData = await getAccessibleCustomers.mutateAsync(tokenData.refresh_token);
+
+        console.log("[OAuth] Step 2 SUCCESS: Got customers", {
+          customerCount: customerData.customers?.length || 0,
+        });
+
+        const fetchedCustomers = customerData.customers;
+
+        if (fetchedCustomers.length === 0) {
+          throw new Error("No Google Ads accounts found. Please ensure you have access to at least one Google Ads account.");
+        }
+
+        // If only one regular account, auto-connect it
+        const regularAccounts = fetchedCustomers.filter((c) => !c.is_manager);
+        if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
+          // Single account, auto-connect
+          const customer = fetchedCustomers[0];
+          console.log("[OAuth] Step 3: Auto-connecting single account", { customerId: customer.customer_id });
+          setStep("connecting");
+
+          await connectAccount.mutateAsync({
+            customer_id: customer.customer_id,
+            refresh_token: tokenData.refresh_token,
+            login_customer_id: customer.is_manager ? customer.customer_id : undefined,
+          });
+
+          console.log("[OAuth] Step 3 SUCCESS: Account connected");
+          oauthResult = { type: "success" };
+          setStep("success");
+          router.replace(ROUTES.ACCOUNTS);
+        } else {
+          // Multiple accounts or MCC detected - show selection UI
+          console.log("[OAuth] Multiple accounts detected, showing selection UI");
+          oauthResult = {
+            type: "selecting",
+            customers: fetchedCustomers,
+            refreshToken: tokenData.refresh_token,
+          };
+          setCustomers(fetchedCustomers);
+          setRefreshToken(tokenData.refresh_token);
+          setStep("selecting");
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to connect account";
+        console.error("[OAuth] ERROR:", message, error);
+        oauthResult = { type: "error", error: message };
+        setStep("error");
+        setErrorMessage(message);
+      }
     },
-    [router],
+    [router, exchangeTokens, getAccessibleCustomers, connectAccount],
   );
 
   useEffect(() => {
-    if (hasProcessed.current) return;
+    console.log("[OAuth] useEffect triggered", {
+      hasStarted: hasStarted.current,
+      hasOAuthPromise: !!oauthPromise,
+      oauthResult: oauthResult?.type,
+    });
+
+    // If OAuth already completed (from previous HMR mount), restore the result
+    if (oauthResult) {
+      console.log("[OAuth] Restoring previous result:", oauthResult.type);
+      if (oauthResult.type === "selecting" && oauthResult.customers) {
+        setCustomers(oauthResult.customers);
+        setRefreshToken(oauthResult.refreshToken || "");
+        setStep("selecting");
+      } else if (oauthResult.type === "error") {
+        setStep("error");
+        setErrorMessage(oauthResult.error || "Unknown error");
+      } else if (oauthResult.type === "success") {
+        setStep("success");
+        router.replace(ROUTES.ACCOUNTS);
+      }
+      return;
+    }
+
+    // If OAuth is already in progress, just wait for it
+    if (oauthPromise) {
+      console.log("[OAuth] OAuth already in progress, waiting...");
+      return;
+    }
+
+    // Prevent double execution within same component instance
+    if (hasStarted.current) {
+      console.log("[OAuth] Already started in this instance, skipping");
+      return;
+    }
 
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const errorParam = searchParams.get("error");
+    console.log("[OAuth] URL params", { hasCode: !!code, hasState: !!state, hasError: !!errorParam });
 
     if (errorParam) {
       router.replace(`${ROUTES.ACCOUNTS}?error=${encodeURIComponent(errorParam)}`);
@@ -135,8 +181,25 @@ export function ConnectCallbackContent() {
       return;
     }
 
-    hasProcessed.current = true;
-    processOAuthCallback(code, state);
+    // Check sessionStorage to prevent code reuse across page refreshes
+    const codeKey = `oauth_code_${code.slice(0, 10)}`;
+    if (sessionStorage.getItem(codeKey)) {
+      console.log("[OAuth] Code already processed (sessionStorage), redirecting...");
+      router.replace(ROUTES.ACCOUNTS);
+      return;
+    }
+
+    // Mark as started and store in sessionStorage
+    hasStarted.current = true;
+    sessionStorage.setItem(codeKey, "processing");
+    console.log("[OAuth] Starting OAuth flow");
+
+    // Start the OAuth flow and store the Promise at module level
+    // This ensures the Promise survives HMR remounts
+    oauthPromise = processOAuthCallback(code, state).finally(() => {
+      // Update sessionStorage when complete
+      sessionStorage.setItem(codeKey, "completed");
+    });
   }, [searchParams, router, processOAuthCallback]);
 
   const handleConnectAccounts = async (
@@ -151,24 +214,20 @@ export function ConnectCallbackContent() {
       setConnectingCount({ current: i + 1, total: accounts.length });
 
       try {
-        await new Promise<void>((resolve, reject) => {
-          connectAccount.mutate(
-            {
-              customer_id: account.customer_id,
-              refresh_token: refreshToken,
-              login_customer_id: account.login_customer_id,
-            },
-            {
-              onSuccess: () => resolve(),
-              onError: (error) => reject(error),
-            },
-          );
+        await connectAccount.mutateAsync({
+          customer_id: account.customer_id,
+          refresh_token: refreshToken,
+          login_customer_id: account.login_customer_id,
         });
       } catch (error) {
         // Continue connecting remaining accounts even if one fails
         console.error(`Failed to connect account ${account.customer_id}:`, error);
       }
     }
+
+    // Clear module-level state
+    oauthPromise = null;
+    oauthResult = null;
 
     setStep("success");
     router.replace(ROUTES.ACCOUNTS);
