@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROUTES } from "@/shared/lib/constants";
+import { useSyncAccount } from "../hooks/use-sync-account";
 import type { GoogleAdsAccount } from "../types";
 
 interface AccountCardProps {
@@ -30,6 +31,12 @@ export function AccountCard({
   isDisconnecting,
   isRefreshing,
 }: AccountCardProps) {
+  const { mutate: syncAccount, isPending: isSyncing } = useSyncAccount();
+
+  const handleSync = () => {
+    syncAccount({ account_id: account.id });
+  };
+
   const formatCustomerId = (id: string) => {
     // Format as XXX-XXX-XXXX
     const cleaned = id.replace(/\D/g, "");
@@ -70,9 +77,9 @@ export function AccountCard({
                 View Campaigns
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onRefresh?.(account.id)} disabled={isRefreshing}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh Data
+            <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+              Sync Data
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

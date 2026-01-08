@@ -6,3 +6,4 @@ export {
   useGetAccessibleCustomers,
   useStartConnectAccount,
 } from "./use-connect-account";
+export { useEnqueueSync, useSyncAccount } from "./use-sync-account";

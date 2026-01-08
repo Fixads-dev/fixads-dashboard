@@ -778,6 +778,21 @@ export interface BudgetHistory {
   total_changes: number;
 }
 
+// ==================== Staleness Types ====================
+
+/**
+ * Staleness information for cached data
+ */
+export interface StalenessInfo {
+  last_synced_at: string | null;
+  is_stale: boolean;
+}
+
+/**
+ * Campaign response with staleness info
+ */
+export interface CampaignWithStaleness extends Campaign, StalenessInfo {}
+
 // ==================== Grouped Campaigns Types ====================
 
 /**

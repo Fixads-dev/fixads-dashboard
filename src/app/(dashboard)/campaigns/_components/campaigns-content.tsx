@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAccounts, useStartConnectAccount } from "@/features/accounts";
+import { SyncButton, useAccounts, useStartConnectAccount } from "@/features/accounts";
 import {
   type CampaignFilters,
   CampaignList,
@@ -61,51 +61,60 @@ export function CampaignsContent() {
         <p className="text-muted-foreground">View and manage your Performance Max campaigns</p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search campaigns..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search campaigns..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select
+            value={accountId ?? "ALL"}
+            onValueChange={(value) => setAccountId(value === "ALL" ? undefined : value)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Accounts</SelectItem>
+              {accounts?.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {getAccountDisplayName(account)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={status ?? "ALL"}
+            onValueChange={(value) =>
+              setStatus(value === "ALL" ? undefined : (value as CampaignStatus))
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <Select
-          value={accountId ?? "ALL"}
-          onValueChange={(value) => setAccountId(value === "ALL" ? undefined : value)}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Accounts</SelectItem>
-            {accounts?.map((account) => (
-              <SelectItem key={account.id} value={account.id}>
-                {getAccountDisplayName(account)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={status ?? "ALL"}
-          onValueChange={(value) =>
-            setStatus(value === "ALL" ? undefined : (value as CampaignStatus))
-          }
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Sync button for selected account */}
+        {accountId && (
+          <div className="flex items-center gap-3">
+            <SyncButton accountId={accountId} size="sm" />
+          </div>
+        )}
       </div>
 
       {isAllAccounts ? (

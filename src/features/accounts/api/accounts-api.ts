@@ -4,9 +4,13 @@ import type {
   AccountsResponse,
   ConnectAccountRequest,
   ConnectAccountResponse,
+  EnqueueSyncRequest,
+  EnqueueSyncResponse,
   GoogleAdsAccount,
   GoogleAdsOAuthCallbackParams,
   OAuth2TokenResponse,
+  SyncAccountRequest,
+  SyncAccountResponse,
 } from "../types";
 
 const GOOGLE_ADS_PATH = "google-ads/v1";
@@ -70,4 +74,18 @@ export const accountsApi = {
    */
   refreshAccount: (accountId: string) =>
     apiMethods.post<GoogleAdsAccount>(`${GOOGLE_ADS_PATH}/accounts/${accountId}/refresh`),
+
+  /**
+   * Trigger manual sync of account data from Google Ads
+   * POST /google-ads/v1/accounts/sync
+   */
+  syncAccount: (params: SyncAccountRequest) =>
+    apiMethods.post<SyncAccountResponse>(`${GOOGLE_ADS_PATH}/accounts/sync`, params),
+
+  /**
+   * Enqueue background sync task (non-blocking)
+   * POST /google-ads/v1/tasks/enqueue/sync
+   */
+  enqueueSyncTask: (params: EnqueueSyncRequest) =>
+    apiMethods.post<EnqueueSyncResponse>(`${GOOGLE_ADS_PATH}/tasks/enqueue/sync`, params),
 };

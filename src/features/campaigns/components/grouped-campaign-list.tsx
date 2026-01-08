@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { GoogleAdsAccount } from "@/features/accounts";
+import { SyncButton } from "@/features/accounts";
 import { EmptyState, ErrorFallback } from "@/shared/components";
 import { CardSkeleton } from "@/shared/components/loading-skeleton";
 import type { AccountCampaigns, CampaignFilters, GroupedCampaignsData } from "../types";
@@ -52,8 +53,8 @@ function AccountSection({ account, displayName, filters, defaultOpen = true }: A
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="rounded-lg border bg-card overflow-hidden">
-      <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 px-4 py-3 hover:bg-muted/50 transition-colors">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex w-full items-center justify-between gap-4 px-4 py-3">
+        <CollapsibleTrigger className="flex flex-1 items-center gap-3 min-w-0 hover:bg-muted/50 transition-colors -my-3 -ml-4 py-3 pl-4 rounded-l-lg">
           <div className="font-medium truncate">{displayName}</div>
           <span className="text-xs text-muted-foreground">
             ({filteredCampaigns.length})
@@ -61,7 +62,7 @@ function AccountSection({ account, displayName, filters, defaultOpen = true }: A
           <span className="text-xs text-muted-foreground font-mono shrink-0">
             {formatCustomerId(account.customer_id)}
           </span>
-        </div>
+        </CollapsibleTrigger>
         <div className="flex items-center gap-2 shrink-0">
           {account.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           {account.isError && (
@@ -69,13 +70,22 @@ function AccountSection({ account, displayName, filters, defaultOpen = true }: A
               Error
             </Badge>
           )}
-          <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-              isOpen ? "" : "-rotate-90"
-            }`}
+          <SyncButton
+            accountId={account.account_id}
+            size="icon"
+            variant="ghost"
+            showLabel={false}
+            className="h-7 w-7"
           />
+          <CollapsibleTrigger className="p-1 hover:bg-muted/50 rounded transition-colors">
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                isOpen ? "" : "-rotate-90"
+              }`}
+            />
+          </CollapsibleTrigger>
         </div>
-      </CollapsibleTrigger>
+      </div>
       <CollapsibleContent>
         <div className="border-t bg-muted/30 p-4">
           {account.isLoading ? (

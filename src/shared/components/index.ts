@@ -1,4 +1,4 @@
-export { DataFreshnessIndicator } from "./data-freshness-indicator";
+export { DataFreshnessIndicator, StalenessIndicator } from "./data-freshness-indicator";
 export { EmptyState } from "./empty-state";
 export { ErrorBoundaryFallback, ErrorFallback } from "./error-fallback";
 export {

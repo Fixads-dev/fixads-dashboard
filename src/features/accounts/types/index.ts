@@ -86,3 +86,54 @@ export interface AccessibleCustomer {
   is_manager: boolean;
   can_manage_clients: boolean;
 }
+
+// ==================== Sync Types ====================
+
+/**
+ * Staleness information for cached data
+ */
+export interface StalenessInfo {
+  last_synced_at: string | null;
+  is_stale: boolean;
+}
+
+/**
+ * Account with staleness info
+ */
+export interface GoogleAdsAccountWithStaleness extends GoogleAdsAccount, StalenessInfo {}
+
+/**
+ * POST /google-ads/v1/accounts/sync request
+ */
+export interface SyncAccountRequest {
+  account_id: string;
+  force_full_sync?: boolean;
+}
+
+/**
+ * POST /google-ads/v1/accounts/sync response
+ */
+export interface SyncAccountResponse {
+  account_id: string;
+  campaigns_synced: number;
+  asset_groups_synced: number;
+  assets_synced: number;
+  duration_seconds: number;
+}
+
+/**
+ * POST /google-ads/v1/tasks/enqueue/sync request
+ */
+export interface EnqueueSyncRequest {
+  customer_id: string;
+  user_id: string;
+  sync_type: "full" | "incremental" | "campaigns" | "assets";
+}
+
+/**
+ * POST /google-ads/v1/tasks/enqueue/sync response
+ */
+export interface EnqueueSyncResponse {
+  status: "enqueued" | "failed";
+  task_name: string | null;
+}
