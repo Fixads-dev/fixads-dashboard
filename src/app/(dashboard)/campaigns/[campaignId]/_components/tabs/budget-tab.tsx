@@ -4,20 +4,30 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  Calendar,
+  CircleDollarSign,
+  Clock,
   DollarSign,
   Loader2,
-  Minus,
+  PiggyBank,
   RefreshCw,
   Save,
-  TrendingDown,
+  Target,
   TrendingUp,
+  Wallet,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { KPICard } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InfoBox } from "@/components/ui/info-box";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingState } from "@/components/ui/loading-state";
+import { MetricLabel } from "@/components/ui/metric-label";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -26,9 +36,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
-import { LoadingState } from "@/components/ui/loading-state";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Info } from "lucide-react";
 import {
   useBudgetSpend,
   useCampaignBudget,
@@ -43,18 +53,34 @@ interface BudgetTabProps {
   campaignName: string;
 }
 
-const pacingStatusColors: Record<BudgetPacingStatus, string> = {
-  ON_TRACK: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  UNDERSPENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  OVERSPENDING: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  LIMITED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-};
-
-const pacingStatusLabels: Record<BudgetPacingStatus, string> = {
-  ON_TRACK: "On Track",
-  UNDERSPENDING: "Underspending",
-  OVERSPENDING: "Overspending",
-  LIMITED: "Limited",
+// Pacing status configuration with descriptions for tooltips
+const pacingStatusConfig: Record<
+  BudgetPacingStatus,
+  { label: string; status: "on_track" | "underspending" | "overspending" | "limited"; description: string }
+> = {
+  ON_TRACK: {
+    label: "On Track",
+    status: "on_track",
+    description: "Your campaign is spending at a healthy pace to meet your daily budget.",
+  },
+  UNDERSPENDING: {
+    label: "Underspending",
+    status: "underspending",
+    description:
+      "Your campaign is spending less than expected. Consider expanding targeting or increasing bids.",
+  },
+  OVERSPENDING: {
+    label: "Overspending",
+    status: "overspending",
+    description:
+      "Your campaign is spending faster than planned. Google may spend up to 2x daily budget on high-traffic days.",
+  },
+  LIMITED: {
+    label: "Limited",
+    status: "limited",
+    description:
+      "Your budget is limiting campaign performance. Consider increasing budget to capture more opportunities.",
+  },
 };
 
 function microsToDollars(micros: number): number {
@@ -136,15 +162,24 @@ export function BudgetTab({ accountId, campaignId, campaignName }: BudgetTabProp
   const dailyBudget = microsToDollars(budget.amount_micros);
   const pacingPct = spend ? spend.pacing_percentage * 100 : 0;
 
+  // Calculate trend for yesterday comparison
+  const spendTrend =
+    spendYesterday > 0 ? ((spendToday - spendYesterday) / spendYesterday) * 100 : 0;
+
   return (
     <div className="space-y-6">
-      {/* Budget Overview Card */}
+      {/* Budget Configuration Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Budget Details</CardTitle>
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" />
+                Budget Configuration
+              </CardTitle>
+              <CardDescription>
+                Daily budget settings and delivery preferences for this campaign
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -165,7 +200,6 @@ export function BudgetTab({ accountId, campaignId, campaignName }: BudgetTabProp
               )}
             </div>
           </div>
-          <CardDescription>Current budget configuration and spending</CardDescription>
         </CardHeader>
         <CardContent>
           {isEditing ? (
@@ -210,14 +244,11 @@ export function BudgetTab({ accountId, campaignId, campaignName }: BudgetTabProp
                       <ArrowDown className="h-4 w-4 text-red-500" />
                     )}
                     <span>
-                      Budget will change from{" "}
-                      <strong>{formatCurrency(dailyBudget)}</strong> to{" "}
-                      <strong>{formatCurrency(parseFloat(newBudgetDollars))}</strong>
-                      {" "}(
-                      {(
-                        ((parseFloat(newBudgetDollars) - dailyBudget) / dailyBudget) *
-                        100
-                      ).toFixed(1)}
+                      Budget will change from <strong>{formatCurrency(dailyBudget)}</strong> to{" "}
+                      <strong>{formatCurrency(parseFloat(newBudgetDollars))}</strong> (
+                      {(((parseFloat(newBudgetDollars) - dailyBudget) / dailyBudget) * 100).toFixed(
+                        1,
+                      )}
                       %)
                     </span>
                   </div>
@@ -248,148 +279,272 @@ export function BudgetTab({ accountId, campaignId, campaignName }: BudgetTabProp
               )}
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Budget Info */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Daily Budget</span>
-                  <span className="text-2xl font-bold">{formatCurrency(dailyBudget)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Delivery Method</span>
-                  <span className="font-medium capitalize">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Daily Budget */}
+              <InfoBox variant="muted" padding="lg">
+                <MetricLabel
+                  label="Daily Budget"
+                  tooltip="The maximum amount Google Ads can spend per day on this campaign. Google may exceed this by up to 2x on high-traffic days, but monthly spend won't exceed 30.4x daily budget."
+                  tip="Review budget regularly based on campaign performance and goals."
+                  size="md"
+                />
+                <div className="text-2xl font-bold mt-1">{formatCurrency(dailyBudget)}</div>
+              </InfoBox>
+
+              {/* Delivery Method */}
+              <InfoBox variant="muted" padding="lg">
+                <MetricLabel
+                  label="Delivery Method"
+                  tooltip="Standard delivery spreads your budget evenly throughout the day. Accelerated delivery spends budget as quickly as possible (may deplete early)."
+                  tip="Standard delivery is recommended for most campaigns."
+                  size="md"
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  {budget.delivery_method === "STANDARD" ? (
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                  )}
+                  <span className="text-lg font-semibold capitalize">
                     {budget.delivery_method.toLowerCase()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Period</span>
-                  <span className="font-medium capitalize">{budget.period.toLowerCase()}</span>
-                </div>
-                {budget.is_shared && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Shared Budget</span>
-                    <Badge variant="outline">{budget.shared_campaign_count} campaigns</Badge>
-                  </div>
-                )}
-              </div>
+              </InfoBox>
 
-              {/* Pacing Info */}
-              {spend && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Pacing Status</span>
-                    <Badge className={pacingStatusColors[spend.pacing_status]}>
-                      {pacingStatusLabels[spend.pacing_status]}
-                    </Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Pacing</span>
-                      <span>{pacingPct.toFixed(0)}%</span>
-                    </div>
-                    <Progress value={Math.min(pacingPct, 100)} className="h-2" />
-                  </div>
+              {/* Budget Period */}
+              <InfoBox variant="muted" padding="lg">
+                <MetricLabel
+                  label="Budget Period"
+                  tooltip="How your budget is measured. Daily budgets reset each day, while monthly budgets track spend across the entire month."
+                  size="md"
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-lg font-semibold capitalize">
+                    {budget.period.toLowerCase()}
+                  </span>
                 </div>
-              )}
+              </InfoBox>
+
+              {/* Shared Budget Info */}
+              <InfoBox variant="muted" padding="lg">
+                <MetricLabel
+                  label="Budget Type"
+                  tooltip="Shared budgets distribute spend across multiple campaigns. Individual budgets are dedicated to a single campaign."
+                  tip="Use shared budgets when campaigns have similar goals and audiences."
+                  size="md"
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  {budget.is_shared ? (
+                    <>
+                      <Badge variant="secondary" className="text-sm">
+                        Shared
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {budget.shared_campaign_count} campaigns
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-semibold">Individual</span>
+                  )}
+                </div>
+              </InfoBox>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Spending Summary Card */}
+      {/* Pacing Status Card */}
       {spend && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Spending Summary</CardTitle>
-            </div>
-            <CardDescription>Recent spending across different periods</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Budget Pacing
+            </CardTitle>
+            <CardDescription>
+              How your campaign is tracking against the daily budget target
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-muted-foreground">Today</div>
-                <div className="text-2xl font-bold">{formatCurrency(spendToday)}</div>
-                <div className="text-xs text-muted-foreground">
-                  {dailyBudget > 0
-                    ? `${((spendToday / dailyBudget) * 100).toFixed(0)}% of budget`
-                    : "—"}
-                </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <MetricLabel
+                  label="Pacing Status"
+                  tooltip="Indicates whether your campaign is on track to spend its daily budget. Google Ads optimizes delivery to maximize results within your budget."
+                  tip="Check pacing daily during new campaign launches."
+                  size="md"
+                />
+                <HoverCard openDelay={200} closeDelay={100}>
+                  <HoverCardTrigger asChild>
+                    <StatusBadge
+                      status={pacingStatusConfig[spend.pacing_status].status}
+                      className="cursor-help"
+                    >
+                      {pacingStatusConfig[spend.pacing_status].label}
+                    </StatusBadge>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80" side="left" align="start">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Info className="h-4 w-4 text-blue-500" />
+                        {pacingStatusConfig[spend.pacing_status].label}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {pacingStatusConfig[spend.pacing_status].description}
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-muted-foreground">Yesterday</div>
-                <div className="text-2xl font-bold">{formatCurrency(spendYesterday)}</div>
-                <div className="flex items-center text-xs">
-                  {spendYesterday > spendToday ? (
-                    <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-                  ) : spendYesterday < spendToday ? (
-                    <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                  ) : (
-                    <Minus className="h-3 w-3 text-muted-foreground mr-1" />
-                  )}
-                  <span className="text-muted-foreground">vs today</span>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <MetricLabel
+                    label="Budget Utilization"
+                    tooltip="The percentage of your daily budget that has been spent or is projected to be spent today based on current pacing."
+                    size="md"
+                  />
+                  <span className="font-medium">{pacingPct.toFixed(0)}%</span>
                 </div>
-              </div>
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-muted-foreground">Avg. Daily (30d)</div>
-                <div className="text-2xl font-bold">{formatCurrency(avgDailySpend)}</div>
-                <div className="text-xs text-muted-foreground">
-                  {dailyBudget > 0
-                    ? `${((avgDailySpend / dailyBudget) * 100).toFixed(0)}% utilization`
-                    : "—"}
-                </div>
-              </div>
-              <div className="rounded-lg border p-4">
-                <div className="text-sm text-muted-foreground">Last 30 Days</div>
-                <div className="text-2xl font-bold">{formatCurrency(last30DaysSpend)}</div>
-                <div className="text-xs text-muted-foreground">
-                  {spend.days_remaining} days remaining
-                </div>
+                <Progress value={Math.min(pacingPct, 100)} className="h-3" />
+                <p className="text-xs text-muted-foreground">
+                  {pacingPct < 50
+                    ? "Spending is below target pace"
+                    : pacingPct < 90
+                      ? "Spending is on track"
+                      : pacingPct <= 100
+                        ? "Near or at budget target"
+                        : "Exceeding daily budget pace"}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Projections Card */}
+      {/* Spending Summary - Using KPICards like Overview tab */}
+      {spend && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Spending Summary</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <KPICard
+              title="Today's Spend"
+              value={formatCurrency(spendToday)}
+              subtitle={
+                dailyBudget > 0
+                  ? `${((spendToday / dailyBudget) * 100).toFixed(0)}% of daily budget`
+                  : undefined
+              }
+              icon={CircleDollarSign}
+              trend={
+                spendYesterday > 0
+                  ? { value: spendTrend, label: "vs yesterday" }
+                  : undefined
+              }
+              size="sm"
+            />
+            <KPICard
+              title="Yesterday"
+              value={formatCurrency(spendYesterday)}
+              subtitle={
+                dailyBudget > 0
+                  ? `${((spendYesterday / dailyBudget) * 100).toFixed(0)}% of daily budget`
+                  : undefined
+              }
+              icon={Clock}
+              size="sm"
+            />
+            <KPICard
+              title="Avg. Daily (30d)"
+              value={formatCurrency(avgDailySpend)}
+              subtitle={
+                dailyBudget > 0
+                  ? `${((avgDailySpend / dailyBudget) * 100).toFixed(0)}% avg utilization`
+                  : undefined
+              }
+              icon={TrendingUp}
+              size="sm"
+            />
+            <KPICard
+              title="Last 30 Days"
+              value={formatCurrency(last30DaysSpend)}
+              subtitle={`${spend.days_remaining} days remaining in period`}
+              icon={PiggyBank}
+              size="sm"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Projections Card */}
       {spend && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Monthly Projections</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Monthly Projections
+            </CardTitle>
+            <CardDescription>
+              Estimated monthly spend based on current campaign performance
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Projected Monthly Spend</div>
-                <div className="text-xl font-semibold">
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="space-y-2">
+                <MetricLabel
+                  label="Projected Monthly Spend"
+                  tooltip="Estimated total spend for the month based on your current daily spending pace. This projection updates as your campaign accumulates data."
+                  tip="Projections become more accurate after 7+ days of data."
+                  size="md"
+                />
+                <div className="text-2xl font-bold">
                   {formatCurrency(microsToDollars(spend.projected_monthly_spend_micros))}
                 </div>
-                <div className="text-xs text-muted-foreground">Based on current pace</div>
+                <p className="text-xs text-muted-foreground">Based on current spending pace</p>
               </div>
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Monthly Budget</div>
-                <div className="text-xl font-semibold">
-                  {formatCurrency(dailyBudget * 30)}
-                </div>
-                <div className="text-xs text-muted-foreground">Daily budget x 30</div>
+              <div className="space-y-2">
+                <MetricLabel
+                  label="Monthly Budget Cap"
+                  tooltip="The maximum amount Google Ads will spend in a month (daily budget × 30.4). Actual daily spend may vary, but monthly total won't exceed this."
+                  size="md"
+                />
+                <div className="text-2xl font-bold">{formatCurrency(dailyBudget * 30.4)}</div>
+                <p className="text-xs text-muted-foreground">Daily budget × 30.4 days</p>
               </div>
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Projected Variance</div>
-                <div className="text-xl font-semibold">
+              <div className="space-y-2">
+                <MetricLabel
+                  label="Projected Variance"
+                  tooltip="The difference between your projected spend and monthly budget cap. Negative values indicate underspending, positive values indicate you're on track to hit your budget."
+                  tip="Large negative variance may indicate targeting or bid issues."
+                  size="md"
+                />
+                <div className="text-2xl font-bold">
                   {(() => {
-                    const monthlyBudget = dailyBudget * 30;
+                    const monthlyBudget = dailyBudget * 30.4;
                     const projectedMonthly = microsToDollars(spend.projected_monthly_spend_micros);
                     const variance = projectedMonthly - monthlyBudget;
+                    const variancePercent = monthlyBudget > 0 ? (variance / monthlyBudget) * 100 : 0;
                     return (
-                      <span className={variance > 0 ? "text-red-600" : "text-green-600"}>
+                      <span className={variance > 0 ? "text-green-600" : "text-amber-600"}>
                         {variance > 0 ? "+" : ""}
                         {formatCurrency(variance)}
                       </span>
                     );
                   })()}
                 </div>
-                <div className="text-xs text-muted-foreground">Difference from budget</div>
+                <p className="text-xs text-muted-foreground">
+                  {(() => {
+                    const monthlyBudget = dailyBudget * 30.4;
+                    const projectedMonthly = microsToDollars(spend.projected_monthly_spend_micros);
+                    const variance = projectedMonthly - monthlyBudget;
+                    return variance > 0
+                      ? "On track to use full budget"
+                      : "May underspend this month";
+                  })()}
+                </p>
               </div>
             </div>
           </CardContent>

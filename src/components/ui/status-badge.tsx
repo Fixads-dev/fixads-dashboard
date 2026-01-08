@@ -16,6 +16,11 @@ const statusBadgeVariants = cva(
         paused: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500",
         removed: "bg-destructive/10 text-destructive",
         unknown: "bg-muted text-muted-foreground",
+        // Budget pacing statuses
+        on_track: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        underspending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+        overspending: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        limited: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
       },
     },
     defaultVariants: {
