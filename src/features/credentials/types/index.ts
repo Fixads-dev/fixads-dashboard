@@ -13,9 +13,22 @@ export type CredentialType =
   | "GEMINI_API_KEY";
 
 /**
- * Storage mode for credential value
+ * Advertising platform for the credential
  */
-export type StorageMode = "database" | "secret_manager";
+export type CredentialPlatform =
+  | "GOOGLE_ADS"
+  | "FACEBOOK"
+  | "TIKTOK"
+  | "LINKEDIN"
+  | "TWITTER"
+  | "PINTEREST"
+  | "SNAPCHAT"
+  | "MICROSOFT_ADS";
+
+/**
+ * Credential status
+ */
+export type CredentialStatus = "AVAILABLE" | "NOT_AVAILABLE" | "PENDING";
 
 /**
  * Credential from API (value is never returned)
@@ -24,13 +37,18 @@ export interface Credential {
   id: string;
   credential_type: CredentialType;
   scope: CredentialScope;
+  platform?: CredentialPlatform; // Optional for backward compatibility
   organization_id?: string;
   user_id?: string;
   name: string;
+  status?: CredentialStatus; // Optional for backward compatibility
   is_active: boolean;
   is_validated: boolean;
-  validated_at?: string;
-  storage_mode: StorageMode;
+  validated_at?: string; // Old API field
+  last_validated_at?: string; // New API field
+  validation_error?: string;
+  can_edit?: boolean; // Optional for backward compatibility (defaults to true)
+  storage_mode?: string; // Old API field (deprecated)
   created_by: string;
   created_at: string;
   updated_at?: string;
@@ -65,6 +83,7 @@ export interface ResolvedCredential {
 export interface CreateCredentialRequest {
   credential_type: CredentialType;
   scope: CredentialScope;
+  platform?: CredentialPlatform; // Optional for backward compatibility
   name: string;
   value: string;
   organization_id?: string;
@@ -117,4 +136,21 @@ export const CREDENTIAL_TYPE_DESCRIPTIONS: Record<CredentialType, string> = {
   GOOGLE_ADS_CLIENT_ID: "OAuth2 client ID for Google Ads",
   GOOGLE_ADS_CLIENT_SECRET: "OAuth2 client secret for Google Ads",
   GEMINI_API_KEY: "API key for AI text generation with Google Gemini",
+};
+
+export const CREDENTIAL_PLATFORM_LABELS: Record<CredentialPlatform, string> = {
+  GOOGLE_ADS: "Google Ads",
+  FACEBOOK: "Facebook",
+  TIKTOK: "TikTok",
+  LINKEDIN: "LinkedIn",
+  TWITTER: "Twitter",
+  PINTEREST: "Pinterest",
+  SNAPCHAT: "Snapchat",
+  MICROSOFT_ADS: "Microsoft Ads",
+};
+
+export const CREDENTIAL_STATUS_LABELS: Record<CredentialStatus, string> = {
+  AVAILABLE: "Available",
+  NOT_AVAILABLE: "Not Available",
+  PENDING: "Pending",
 };

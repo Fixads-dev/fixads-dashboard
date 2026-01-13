@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import {
+  Building2,
   CheckCircle2,
   Key,
   MoreVertical,
@@ -10,16 +10,11 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -45,18 +40,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  CREDENTIAL_SCOPE_LABELS,
+  CREDENTIAL_PLATFORM_LABELS,
   CREDENTIAL_TYPE_DESCRIPTIONS,
   CREDENTIAL_TYPE_LABELS,
+  type Credential,
+  type CredentialPlatform,
+  type CredentialScope,
+  type CredentialType,
   useCreateCredential,
   useCredentials,
   useDeleteCredential,
   useValidateCredential,
-  type Credential,
-  type CredentialScope,
-  type CredentialType,
 } from "@/features/credentials";
+import { useOrganizations } from "@/features/organizations";
 import { formatDate } from "@/shared/lib/format";
 
 const SCOPE_COLORS: Record<CredentialScope, string> = {
@@ -68,6 +66,11 @@ const SCOPE_COLORS: Record<CredentialScope, string> = {
 function CredentialCard({ credential }: { credential: Credential }) {
   const { mutate: validate, isPending: isValidating } = useValidateCredential();
   const { mutate: deleteCredential, isPending: isDeleting } = useDeleteCredential();
+
+  // Backward compatibility: default can_edit to true if not present
+  const canEdit = credential.can_edit ?? true;
+  // Backward compatibility: use last_validated_at or validated_at
+  const validatedAt = credential.last_validated_at ?? credential.validated_at;
 
   const handleValidate = () => {
     validate(credential.id, {
@@ -108,13 +111,28 @@ function CredentialCard({ credential }: { credential: Credential }) {
             <p className="font-medium">{credential.name}</p>
             {credential.is_validated ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
+            ) : credential.validation_error ? (
+              <Tooltip>
+                <TooltipTrigger>
+                  <XCircle className="h-4 w-4 text-destructive" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{credential.validation_error}</p>
+                </TooltipContent>
+              </Tooltip>
             ) : (
               <XCircle className="h-4 w-4 text-muted-foreground" />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            {CREDENTIAL_TYPE_LABELS[credential.credential_type]}
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{CREDENTIAL_TYPE_LABELS[credential.credential_type]}</span>
+            {credential.platform && (
+              <>
+                <span>·</span>
+                <span>{CREDENTIAL_PLATFORM_LABELS[credential.platform]}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -125,14 +143,24 @@ function CredentialCard({ credential }: { credential: Credential }) {
               ? "Org"
               : "Platform"}
         </Badge>
-        {credential.validated_at && (
+        {credential.scope === "ORGANIZATION" && credential.organization_id && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Shared with organization</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {validatedAt && (
           <span className="text-xs text-muted-foreground">
-            Validated {formatDate(credential.validated_at, "MMM d")}
+            Validated {formatDate(validatedAt, "MMM d")}
           </span>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit}>
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -143,7 +171,7 @@ function CredentialCard({ credential }: { credential: Credential }) {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={isDeleting || !canEdit}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -162,8 +190,13 @@ function CreateCredentialDialog() {
   const [value, setValue] = useState("");
   const [credentialType, setCredentialType] = useState<CredentialType>("GEMINI_API_KEY");
   const [scope, setScope] = useState<CredentialScope>("USER");
+  const [platform, setPlatform] = useState<CredentialPlatform>("GOOGLE_ADS");
 
   const { mutate: create, isPending } = useCreateCredential();
+  const { data: organizationsData } = useOrganizations();
+
+  // Check if user has any organizations (with defensive check for items)
+  const hasOrganization = organizationsData?.items && organizationsData.items.length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +206,7 @@ function CreateCredentialDialog() {
         value,
         credential_type: credentialType,
         scope,
+        platform,
       },
       {
         onSuccess: () => {
@@ -183,7 +217,7 @@ function CreateCredentialDialog() {
         onError: (error) => {
           toast.error(error.message || "Failed to create credential");
         },
-      }
+      },
     );
   };
 
@@ -192,6 +226,7 @@ function CreateCredentialDialog() {
     setValue("");
     setCredentialType("GEMINI_API_KEY");
     setScope("USER");
+    setPlatform("GOOGLE_ADS");
   };
 
   return (
@@ -221,13 +256,11 @@ function CreateCredentialDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(CREDENTIAL_TYPE_LABELS) as CredentialType[]).map(
-                    (type) => (
-                      <SelectItem key={type} value={type}>
-                        {CREDENTIAL_TYPE_LABELS[type]}
-                      </SelectItem>
-                    )
-                  )}
+                  {(Object.keys(CREDENTIAL_TYPE_LABELS) as CredentialType[]).map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {CREDENTIAL_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -235,21 +268,39 @@ function CreateCredentialDialog() {
               </p>
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="platform">Platform</Label>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as CredentialPlatform)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CREDENTIAL_PLATFORM_LABELS) as CredentialPlatform[]).map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {CREDENTIAL_PLATFORM_LABELS[p]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="scope">Scope</Label>
-              <Select
-                value={scope}
-                onValueChange={(v) => setScope(v as CredentialScope)}
-              >
+              <Select value={scope} onValueChange={(v) => setScope(v as CredentialScope)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USER">Personal (only you)</SelectItem>
-                  <SelectItem value="ORGANIZATION">
+                  <SelectItem value="ORGANIZATION" disabled={!hasOrganization}>
                     Organization (shared with team)
+                    {!hasOrganization && " - Join an org first"}
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {!hasOrganization && scope === "USER" && (
+                <p className="text-xs text-muted-foreground">
+                  Join an organization to share credentials with your team.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
@@ -301,9 +352,7 @@ export function CredentialsSection() {
             <Key className="h-5 w-5" />
             API Credentials
           </CardTitle>
-          <CardDescription>
-            Manage your API keys for Google Ads and AI services
-          </CardDescription>
+          <CardDescription>Manage your API keys for Google Ads and AI services</CardDescription>
         </div>
         <CreateCredentialDialog />
       </CardHeader>
@@ -316,9 +365,7 @@ export function CredentialsSection() {
         ) : !credentials || credentials.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Key className="h-12 w-12 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              No credentials configured
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">No credentials configured</p>
             <p className="text-xs text-muted-foreground">
               Add your own API keys to use with the platform
             </p>
