@@ -195,8 +195,9 @@ function CreateCredentialDialog() {
   const { mutate: create, isPending } = useCreateCredential();
   const { data: organizationsData } = useOrganizations();
 
-  // Check if user has any organizations (with defensive check for items)
-  const hasOrganization = organizationsData?.items && organizationsData.items.length > 0;
+  // Check if user has any organizations
+  const hasOrganization =
+    organizationsData?.organizations && organizationsData.organizations.length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

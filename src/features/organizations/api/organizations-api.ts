@@ -1,6 +1,10 @@
 import { apiMethods } from "@/shared/api";
 import type {
+  AcceptInvitationResponse,
+  CreateInvitationRequest,
   CreateOrganizationRequest,
+  Invitation,
+  InvitationListResponse,
   InviteMemberRequest,
   MemberListResponse,
   Organization,
@@ -98,6 +102,45 @@ export const organizationsApi = {
     apiMethods.post<Organization>(`${AUTH_PATH}/organizations/${orgId}/transfer-ownership`, {
       new_owner_id: newOwnerId,
     }),
+
+  // ==================== Invitations ====================
+
+  /**
+   * Create invitation to organization
+   * POST /auth/v1/organizations/{orgId}/invitations
+   */
+  createInvitation: (orgId: string, data: CreateInvitationRequest) =>
+    apiMethods.post<Invitation>(`${AUTH_PATH}/organizations/${orgId}/invitations`, data),
+
+  /**
+   * List organization invitations
+   * GET /auth/v1/organizations/{orgId}/invitations
+   */
+  listInvitations: (orgId: string, includeExpired = false) =>
+    apiMethods.get<InvitationListResponse>(
+      `${AUTH_PATH}/organizations/${orgId}/invitations?include_expired=${includeExpired}`,
+    ),
+
+  /**
+   * Revoke invitation
+   * DELETE /auth/v1/organizations/{orgId}/invitations/{invitationId}
+   */
+  revokeInvitation: (orgId: string, invitationId: string) =>
+    apiMethods.delete<void>(`${AUTH_PATH}/organizations/${orgId}/invitations/${invitationId}`),
+
+  /**
+   * Get invitation by token (public, no auth required for viewing)
+   * GET /auth/v1/invitations/{token}
+   */
+  getInvitationByToken: (token: string) =>
+    apiMethods.get<Invitation>(`${AUTH_PATH}/invitations/${token}`),
+
+  /**
+   * Accept invitation (requires auth)
+   * POST /auth/v1/invitations/{token}/accept
+   */
+  acceptInvitation: (token: string) =>
+    apiMethods.post<AcceptInvitationResponse>(`${AUTH_PATH}/invitations/${token}/accept`),
 
   // ==================== Subscriptions ====================
 

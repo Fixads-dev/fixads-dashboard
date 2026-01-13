@@ -59,7 +59,16 @@ export function useCompleteGoogleOAuth() {
         });
       }
 
-      router.replace(ROUTES.HOME);
+      // Check for stored invite redirect URL
+      const inviteRedirect =
+        typeof window !== "undefined" ? sessionStorage.getItem("invite_redirect") : null;
+
+      if (inviteRedirect) {
+        sessionStorage.removeItem("invite_redirect");
+        router.replace(inviteRedirect);
+      } else {
+        router.replace(ROUTES.HOME);
+      }
     },
     onError: (error) => {
       toast.error("Authentication failed", {

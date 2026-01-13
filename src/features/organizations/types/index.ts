@@ -106,7 +106,7 @@ export interface UpdateMemberRoleRequest {
 }
 
 export interface OrganizationListResponse {
-  items: OrganizationWithRole[];
+  organizations: Organization[];
   total: number;
 }
 
@@ -117,4 +117,61 @@ export interface MemberListResponse {
 
 export interface SubscriptionTierListResponse {
   items: SubscriptionTier[];
+}
+
+// ==================== Invitations ====================
+
+/**
+ * Invitation status
+ */
+export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
+
+/**
+ * Invitation role (subset of OrganizationRole, excludes owner)
+ */
+export type InvitationRole = "admin" | "manager" | "user" | "viewer";
+
+/**
+ * Organization invitation
+ */
+export interface Invitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: InvitationRole;
+  status: InvitationStatus;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  invited_by_name: string | null;
+  organization_name: string | null;
+}
+
+/**
+ * Request to create an invitation
+ */
+export interface CreateInvitationRequest {
+  email: string;
+  role?: InvitationRole;
+}
+
+/**
+ * Response for invitation list
+ */
+export interface InvitationListResponse {
+  invitations: Invitation[];
+  total: number;
+}
+
+/**
+ * Member response after accepting invitation
+ */
+export interface AcceptInvitationResponse {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+  user_email: string;
+  user_full_name: string | null;
 }

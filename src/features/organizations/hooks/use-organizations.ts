@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { organizationsApi } from "../api/organizations-api";
 import type {
+  CreateInvitationRequest,
   CreateOrganizationRequest,
   InviteMemberRequest,
   UpdateMemberRoleRequest,
@@ -13,6 +14,8 @@ export const ORGANIZATION_KEYS = {
   list: () => [...ORGANIZATION_KEYS.all, "list"] as const,
   detail: (id: string) => [...ORGANIZATION_KEYS.all, id] as const,
   members: (id: string) => [...ORGANIZATION_KEYS.all, id, "members"] as const,
+  invitations: (id: string) => [...ORGANIZATION_KEYS.all, id, "invitations"] as const,
+  invitation: (token: string) => ["invitation", token] as const,
   subscription: (id: string) => [...ORGANIZATION_KEYS.all, id, "subscription"] as const,
   usage: (id: string) => [...ORGANIZATION_KEYS.all, id, "usage"] as const,
   tiers: ["subscription-tiers"] as const,
@@ -122,6 +125,61 @@ export function useLeaveOrganization() {
   return useMutation({
     mutationFn: (orgId: string) => organizationsApi.leave(orgId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+    },
+  });
+}
+
+// ==================== Invitations ====================
+
+export function useOrganizationInvitations(orgId: string, includeExpired = false) {
+  return useQuery({
+    queryKey: [...ORGANIZATION_KEYS.invitations(orgId), { includeExpired }],
+    queryFn: () => organizationsApi.listInvitations(orgId, includeExpired),
+    enabled: !!orgId,
+    staleTime: 60 * 1000, // 1 minute
+  });
+}
+
+export function useInvitationByToken(token: string) {
+  return useQuery({
+    queryKey: ORGANIZATION_KEYS.invitation(token),
+    queryFn: () => organizationsApi.getInvitationByToken(token),
+    enabled: !!token,
+    staleTime: 30 * 1000, // 30 seconds
+    retry: false, // Don't retry on 404/410 errors
+  });
+}
+
+export function useCreateInvitation(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateInvitationRequest) => organizationsApi.createInvitation(orgId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.invitations(orgId) });
+    },
+  });
+}
+
+export function useRevokeInvitation(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invitationId: string) => organizationsApi.revokeInvitation(orgId, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.invitations(orgId) });
+    },
+  });
+}
+
+export function useAcceptInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) => organizationsApi.acceptInvitation(token),
+    onSuccess: () => {
+      // Invalidate organizations list to show the new org
       queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
     },
   });
