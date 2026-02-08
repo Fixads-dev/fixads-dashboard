@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -181,6 +182,7 @@ export function ConnectCallbackContent() {
     setConnectingCount({ current: 0, total: accounts.length });
 
     // Connect accounts sequentially
+    const failedAccounts: string[] = [];
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
       setConnectingCount({ current: i + 1, total: accounts.length });
@@ -192,8 +194,16 @@ export function ConnectCallbackContent() {
           login_customer_id: account.login_customer_id,
         });
       } catch {
-        // Continue connecting remaining accounts even if one fails
+        // Track failed account but continue connecting remaining accounts
+        const customer = customers.find((c) => c.customer_id === account.customer_id);
+        failedAccounts.push(customer?.descriptive_name || account.customer_id);
       }
+    }
+
+    if (failedAccounts.length > 0) {
+      toast.error(
+        `Failed to connect ${failedAccounts.length} account(s): ${failedAccounts.join(", ")}`,
+      );
     }
 
     // Clear module-level state

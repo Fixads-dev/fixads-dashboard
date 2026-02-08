@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -55,17 +56,28 @@ export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesLi
   const deleteRule = useDeleteAlertRule();
 
   const handleToggleEnabled = (rule: AlertRule) => {
-    updateRule.mutate({
-      ruleId: rule.id,
-      data: { is_enabled: !rule.is_enabled },
-    });
+    updateRule.mutate(
+      {
+        ruleId: rule.id,
+        data: { is_enabled: !rule.is_enabled },
+      },
+      {
+        onError: () => {
+          toast.error("Failed to update alert rule");
+        },
+      },
+    );
   };
 
   const handleDelete = () => {
     if (!deletingRuleId) return;
     deleteRule.mutate(deletingRuleId, {
       onSuccess: () => {
+        toast.success("Alert rule deleted");
         setDeletingRuleId(null);
+      },
+      onError: () => {
+        toast.error("Failed to delete alert rule");
       },
     });
   };

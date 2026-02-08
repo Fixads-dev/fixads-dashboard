@@ -134,6 +134,7 @@ export const campaignsApi = {
    * @throws Error if campaign not found or API fails
    */
   getCampaignDetail: async (accountId: string, campaignId: string): Promise<CampaignDetail> => {
+    validateCampaignId(campaignId);
     // Use dedicated backend endpoint that handles aggregation properly
     const rawResponse = await apiMethods.get<unknown>(
       `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}?account_id=${accountId}`,
@@ -301,6 +302,7 @@ export const campaignsApi = {
    * GET /google-ads/pmax/campaigns/{campaign_id}/asset-groups?account_id=UUID
    */
   getAssetGroups: async (accountId: string, campaignId: string): Promise<AssetGroup[]> => {
+    validateCampaignId(campaignId);
     const result = await apiMethods.get<
       Array<{
         asset_group_id: string;
@@ -333,6 +335,7 @@ export const campaignsApi = {
    * GET /google-ads/pmax/campaigns/{campaign_id}/text-assets?account_id=UUID
    */
   getTextAssets: async (accountId: string, campaignId: string): Promise<AssetGroupWithAssets[]> => {
+    validateCampaignId(campaignId);
     const rawResult = await apiMethods.get<unknown>(
       `${GOOGLE_ADS_PATH}/pmax/campaigns/${campaignId}/text-assets?account_id=${accountId}`,
     );
