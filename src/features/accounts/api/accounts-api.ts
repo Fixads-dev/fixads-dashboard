@@ -31,11 +31,12 @@ export const accountsApi = {
 
   /**
    * Get accessible customers (for account selection during connect)
-   * GET /google-ads/customers?refresh_token=xxx
+   * POST /google-ads/v1/customers/list
    */
   getAccessibleCustomers: (refreshToken: string) =>
-    apiMethods.get<{ customers: AccessibleCustomer[] }>(
-      `${GOOGLE_ADS_PATH}/customers?refresh_token=${encodeURIComponent(refreshToken)}`,
+    apiMethods.post<{ customers: AccessibleCustomer[] }>(
+      `${GOOGLE_ADS_PATH}/customers/list`,
+      { refresh_token: refreshToken },
     ),
 
   /**
