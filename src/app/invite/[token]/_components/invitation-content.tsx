@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth";
 import {
   type Invitation,
@@ -197,6 +198,9 @@ function PendingInvitationState({ invitation, token }: PendingInvitationStatePro
     acceptInvitation(token, {
       onSuccess: (data) => {
         router.push(`/accounts?org=${data.organization_id}`);
+      },
+      onError: () => {
+        toast.error("Failed to accept invitation");
       },
     });
   };

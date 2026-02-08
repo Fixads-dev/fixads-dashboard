@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import { useAddKeyword } from "../hooks/use-search-terms";
 import type { KeywordMatchType, SearchTerm } from "../types";
 import { MATCH_TYPE_DESCRIPTIONS, MATCH_TYPE_LABELS } from "../types";
@@ -56,6 +57,9 @@ export function AddKeywordDialog({
           if (response.success) {
             onOpenChange(false);
           }
+        },
+        onError: () => {
+          toast.error("Failed to add keyword");
         },
       },
     );
