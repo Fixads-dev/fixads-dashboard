@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Plus, Trash2, Play, Edit, MoreHorizontal } from "lucide-react";
+import { FileText, Loader2, Plus, Trash2, Play, Edit, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -131,7 +131,7 @@ export function ReportsContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <Loader2 className="h-8 w-8 motion-safe:animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -140,7 +140,7 @@ export function ReportsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Custom Reports</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Custom Reports</h1>
           <p className="text-muted-foreground">
             Create and manage custom reports with your preferred metrics and dimensions
           </p>

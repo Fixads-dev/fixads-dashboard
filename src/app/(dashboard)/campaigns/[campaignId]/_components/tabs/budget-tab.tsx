@@ -22,7 +22,7 @@ import { KPICard } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@/shared/components";
 import { InfoBox } from "@/components/ui/info-box";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

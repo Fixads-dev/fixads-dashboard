@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, Plus, Trash2, Edit, MoreHorizontal, Star, StarOff } from "lucide-react";
+import { LayoutGrid, Loader2, Plus, Trash2, Edit, MoreHorizontal, Star, StarOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -98,7 +98,7 @@ export function DashboardsContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <Loader2 className="h-8 w-8 motion-safe:animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -107,7 +107,7 @@ export function DashboardsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboards</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboards</h1>
           <p className="text-muted-foreground">
             Create custom dashboards with widgets to visualize your campaign data
           </p>

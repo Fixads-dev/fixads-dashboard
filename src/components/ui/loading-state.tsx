@@ -22,7 +22,7 @@ export function LoadingState({
 
   return (
     <div className={cn("flex items-center justify-center", sizeClasses[size].container, className)}>
-      <Loader2 className={cn("animate-spin text-muted-foreground", sizeClasses[size].icon)} />
+      <Loader2 className={cn("motion-safe:animate-spin text-muted-foreground", sizeClasses[size].icon)} />
       <span className={cn("ml-2 text-muted-foreground", sizeClasses[size].text)}>{message}</span>
     </div>
   );

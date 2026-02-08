@@ -5,7 +5,7 @@ import { AlertCircle, Bell, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@/shared/components";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ALERT_METRIC_LABELS,

@@ -30,7 +30,7 @@ export function ConversionsContent() {
           <Target className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Conversion Tracking</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Conversion Tracking</h1>
           <p className="text-muted-foreground">
             View conversion actions configured for your account
           </p>

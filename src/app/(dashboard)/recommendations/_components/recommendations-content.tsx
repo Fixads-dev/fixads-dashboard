@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -130,9 +131,16 @@ export function RecommendationsContent() {
 
       {/* Show prompt if no account selected */}
       {!accountId ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground">Select an account to view recommendations.</p>
-        </div>
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center justify-center text-center">
+              <h3 className="text-lg font-semibold mb-2">Select an account</h3>
+              <p className="text-muted-foreground">
+                Choose a Google Ads account to view recommendations
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <RecommendationList filters={filters} />
       )}

@@ -19,11 +19,11 @@ export function AlertsContent() {
   const { data: unreadData } = useAlertUnreadCount();
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Alerts</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
           <p className="text-muted-foreground">
             Configure alert rules and manage notifications
           </p>

@@ -32,7 +32,7 @@ export function ChangeHistoryContent() {
           <History className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Change History</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Change History</h1>
           <p className="text-muted-foreground">Audit log of changes made to your account</p>
         </div>
       </div>

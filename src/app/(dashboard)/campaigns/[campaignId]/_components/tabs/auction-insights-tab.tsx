@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangeSelect } from "@/components/ui/date-range-select";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@/shared/components";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Progress } from "@/components/ui/progress";
 import { TabPageHeader } from "@/components/ui/tab-page-header";

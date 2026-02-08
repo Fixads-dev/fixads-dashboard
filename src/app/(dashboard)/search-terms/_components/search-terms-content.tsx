@@ -35,7 +35,7 @@ export function SearchTermsContent() {
           <Search className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Search Terms</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Search Terms</h1>
           <p className="text-muted-foreground">View search queries that triggered your ads</p>
         </div>
       </div>

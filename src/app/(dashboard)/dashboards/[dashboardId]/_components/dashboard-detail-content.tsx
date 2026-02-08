@@ -8,6 +8,7 @@ import {
   Settings,
   BarChart3,
   LineChart,
+  Loader2,
   PieChart,
   Table2,
   Grid3X3,
@@ -128,7 +129,7 @@ export function DashboardDetailContent({ dashboardId }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <Loader2 className="h-8 w-8 motion-safe:animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -155,7 +156,7 @@ export function DashboardDetailContent({ dashboardId }: Props) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{dashboard.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{dashboard.name}</h1>
             {dashboard.description && (
               <p className="text-muted-foreground">{dashboard.description}</p>
             )}

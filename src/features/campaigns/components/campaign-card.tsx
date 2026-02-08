@@ -28,7 +28,7 @@ export function CampaignCard({ campaign, accountId }: CampaignCardProps) {
 
   return (
     <Link href={`/campaigns/${campaign.campaign_id}?account=${accountId}`}>
-      <Card className="h-full transition-all hover:shadow-md hover:border-primary/50 group">
+      <Card className="h-full transition-[box-shadow,border-color] motion-reduce:transition-none hover:shadow-md hover:border-primary/50 group">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
           <div className="flex-1 space-y-1 min-w-0">
             <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">

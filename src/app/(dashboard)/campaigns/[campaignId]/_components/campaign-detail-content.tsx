@@ -74,7 +74,7 @@ export function CampaignDetailContent() {
   // Not found state
   if (!campaign) {
     return (
-      <div className="p-6">
+      <div>
         <Link href="/campaigns">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -91,7 +91,7 @@ export function CampaignDetailContent() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/campaigns">
@@ -109,7 +109,7 @@ export function CampaignDetailContent() {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{campaign.campaign_name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{campaign.campaign_name}</h1>
             <Badge variant={statusColors[campaign.status as CampaignStatus] ?? "secondary"}>
               {statusLabels[campaign.status as CampaignStatus] ?? campaign.status}
             </Badge>
