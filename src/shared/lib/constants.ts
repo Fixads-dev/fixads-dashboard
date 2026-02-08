@@ -13,7 +13,7 @@ export const API_PATHS = {
   GOOGLE_ADS: "/google-ads/v1",
   OPTIMIZER: "/optimization/v1",
   ALERT: "/alert/v1",
-  REPORTS: "/reports/v1",
+  REPORTS: "/reports/api/v1",
 } as const;
 
 /**
