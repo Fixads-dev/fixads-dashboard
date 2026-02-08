@@ -54,7 +54,6 @@ export function ConnectCallbackContent() {
 
       try {
         // Step 1: Exchange code for tokens
-        console.log("[OAuth] Step 1: Exchanging code for tokens", { code: code.slice(0, 20) + "..." });
         setStep("exchanging");
 
         const tokenData = await exchangeTokens.mutateAsync({
@@ -63,25 +62,14 @@ export function ConnectCallbackContent() {
           redirect_uri: redirectUri,
         });
 
-        console.log("[OAuth] Step 1 SUCCESS: Got tokens", {
-          hasAccessToken: !!tokenData.access_token,
-          hasRefreshToken: !!tokenData.refresh_token,
-          refreshTokenLength: tokenData.refresh_token?.length || 0,
-        });
-
         if (!tokenData.refresh_token) {
           throw new Error("OAuth succeeded but no refresh token was returned. Please try again.");
         }
 
         // Step 2: Fetch accessible customers
-        console.log("[OAuth] Step 2: Fetching accessible customers");
         setStep("fetching_customers");
 
         const customerData = await getAccessibleCustomers.mutateAsync(tokenData.refresh_token);
-
-        console.log("[OAuth] Step 2 SUCCESS: Got customers", {
-          customerCount: customerData.customers?.length || 0,
-        });
 
         const fetchedCustomers = customerData.customers;
 
@@ -94,7 +82,6 @@ export function ConnectCallbackContent() {
         if (regularAccounts.length === 1 && fetchedCustomers.length === 1) {
           // Single account, auto-connect
           const customer = fetchedCustomers[0];
-          console.log("[OAuth] Step 3: Auto-connecting single account", { customerId: customer.customer_id });
           setStep("connecting");
 
           await connectAccount.mutateAsync({
@@ -103,13 +90,11 @@ export function ConnectCallbackContent() {
             login_customer_id: customer.is_manager ? customer.customer_id : undefined,
           });
 
-          console.log("[OAuth] Step 3 SUCCESS: Account connected");
           oauthResult = { type: "success" };
           setStep("success");
           router.replace(ROUTES.ACCOUNTS);
         } else {
           // Multiple accounts or MCC detected - show selection UI
-          console.log("[OAuth] Multiple accounts detected, showing selection UI");
           oauthResult = {
             type: "selecting",
             customers: fetchedCustomers,
@@ -121,7 +106,6 @@ export function ConnectCallbackContent() {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to connect account";
-        console.error("[OAuth] ERROR:", message, error);
         oauthResult = { type: "error", error: message };
         setStep("error");
         setErrorMessage(message);
@@ -131,15 +115,8 @@ export function ConnectCallbackContent() {
   );
 
   useEffect(() => {
-    console.log("[OAuth] useEffect triggered", {
-      hasStarted: hasStarted.current,
-      hasOAuthPromise: !!oauthPromise,
-      oauthResult: oauthResult?.type,
-    });
-
     // If OAuth already completed (from previous HMR mount), restore the result
     if (oauthResult) {
-      console.log("[OAuth] Restoring previous result:", oauthResult.type);
       if (oauthResult.type === "selecting" && oauthResult.customers) {
         setCustomers(oauthResult.customers);
         setRefreshToken(oauthResult.refreshToken || "");
@@ -156,20 +133,17 @@ export function ConnectCallbackContent() {
 
     // If OAuth is already in progress, just wait for it
     if (oauthPromise) {
-      console.log("[OAuth] OAuth already in progress, waiting...");
       return;
     }
 
     // Prevent double execution within same component instance
     if (hasStarted.current) {
-      console.log("[OAuth] Already started in this instance, skipping");
       return;
     }
 
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const errorParam = searchParams.get("error");
-    console.log("[OAuth] URL params", { hasCode: !!code, hasState: !!state, hasError: !!errorParam });
 
     if (errorParam) {
       router.replace(`${ROUTES.ACCOUNTS}?error=${encodeURIComponent(errorParam)}`);
@@ -184,7 +158,6 @@ export function ConnectCallbackContent() {
     // Check sessionStorage to prevent code reuse across page refreshes
     const codeKey = `oauth_code_${code.slice(0, 10)}`;
     if (sessionStorage.getItem(codeKey)) {
-      console.log("[OAuth] Code already processed (sessionStorage), redirecting...");
       router.replace(ROUTES.ACCOUNTS);
       return;
     }
@@ -192,7 +165,6 @@ export function ConnectCallbackContent() {
     // Mark as started and store in sessionStorage
     hasStarted.current = true;
     sessionStorage.setItem(codeKey, "processing");
-    console.log("[OAuth] Starting OAuth flow");
 
     // Start the OAuth flow and store the Promise at module level
     // This ensures the Promise survives HMR remounts
@@ -219,9 +191,8 @@ export function ConnectCallbackContent() {
           refresh_token: refreshToken,
           login_customer_id: account.login_customer_id,
         });
-      } catch (error) {
+      } catch {
         // Continue connecting remaining accounts even if one fails
-        console.error(`Failed to connect account ${account.customer_id}:`, error);
       }
     }
 

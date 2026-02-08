@@ -2,7 +2,18 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { Clock, Mail, MoreVertical, Trash2, UserPlus } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,67 +40,92 @@ const STATUS_COLORS: Record<InvitationStatus, string> = {
 };
 
 function InvitationRow({ invitation, orgId }: { invitation: Invitation; orgId: string }) {
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const { mutate: revoke, isPending: isRevoking } = useRevokeInvitation(orgId);
 
   const handleRevoke = () => {
-    if (confirm("Are you sure you want to revoke this invitation?")) {
-      revoke(invitation.id, {
-        onSuccess: () => {
-          toast.success("Invitation revoked");
-        },
-        onError: (error) => {
-          toast.error(error.message || "Failed to revoke invitation");
-        },
-      });
-    }
+    revoke(invitation.id, {
+      onSuccess: () => {
+        toast.success("Invitation revoked");
+        setShowRevokeDialog(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to revoke invitation");
+      },
+    });
   };
 
   const expiresAt = new Date(invitation.expires_at);
   const isExpired = expiresAt < new Date();
 
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-          <Mail className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-medium">{invitation.email}</p>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="capitalize">{invitation.role}</span>
-            <span>·</span>
-            <Clock className="h-3 w-3" />
-            <span>
-              {isExpired
-                ? `Expired ${formatDistanceToNow(expiresAt)} ago`
-                : `Expires in ${formatDistanceToNow(expiresAt)}`}
-            </span>
+    <>
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">{invitation.email}</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="capitalize">{invitation.role}</span>
+              <span>·</span>
+              <Clock className="h-3 w-3" />
+              <span>
+                {isExpired
+                  ? `Expired ${formatDistanceToNow(expiresAt)} ago`
+                  : `Expires in ${formatDistanceToNow(expiresAt)}`}
+              </span>
+            </div>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Badge className={STATUS_COLORS[invitation.status]}>{invitation.status}</Badge>
+          {invitation.status === "pending" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">More options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setShowRevokeDialog(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Revoke
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Badge className={STATUS_COLORS[invitation.status]}>{invitation.status}</Badge>
-        {invitation.status === "pending" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={handleRevoke}
-                disabled={isRevoking}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isRevoking ? "Revoking..." : "Revoke"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </div>
+
+      <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Invitation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to revoke the invitation to{" "}
+              <strong>{invitation.email}</strong>? They will no longer be able to
+              join the organization using this invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevoke}
+              disabled={isRevoking}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isRevoking ? "Revoking..." : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

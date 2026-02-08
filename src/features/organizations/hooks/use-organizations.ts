@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { organizationsApi } from "../api/organizations-api";
 import type {
   CreateInvitationRequest,
@@ -8,24 +9,16 @@ import type {
   UpdateOrganizationRequest,
 } from "../types";
 
-// Query keys
-export const ORGANIZATION_KEYS = {
-  all: ["organizations"] as const,
-  list: () => [...ORGANIZATION_KEYS.all, "list"] as const,
-  detail: (id: string) => [...ORGANIZATION_KEYS.all, id] as const,
-  members: (id: string) => [...ORGANIZATION_KEYS.all, id, "members"] as const,
-  invitations: (id: string) => [...ORGANIZATION_KEYS.all, id, "invitations"] as const,
-  invitation: (token: string) => ["invitation", token] as const,
-  subscription: (id: string) => [...ORGANIZATION_KEYS.all, id, "subscription"] as const,
-  usage: (id: string) => [...ORGANIZATION_KEYS.all, id, "usage"] as const,
-  tiers: ["subscription-tiers"] as const,
-};
+/**
+ * @deprecated Use QUERY_KEYS.ORGANIZATIONS from @/shared/lib/constants instead
+ */
+export const ORGANIZATION_KEYS = QUERY_KEYS.ORGANIZATIONS;
 
 // ==================== Organizations ====================
 
 export function useOrganizations() {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.list(),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.list(),
     queryFn: organizationsApi.list,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -33,7 +26,7 @@ export function useOrganizations() {
 
 export function useOrganization(orgId: string) {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.detail(orgId),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.detail(orgId),
     queryFn: () => organizationsApi.get(orgId),
     enabled: !!orgId,
     staleTime: 2 * 60 * 1000,
@@ -46,7 +39,7 @@ export function useCreateOrganization() {
   return useMutation({
     mutationFn: (data: CreateOrganizationRequest) => organizationsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.list() });
     },
   });
 }
@@ -57,8 +50,8 @@ export function useUpdateOrganization(orgId: string) {
   return useMutation({
     mutationFn: (data: UpdateOrganizationRequest) => organizationsApi.update(orgId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.detail(orgId) });
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.detail(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.list() });
     },
   });
 }
@@ -69,7 +62,7 @@ export function useDeleteOrganization() {
   return useMutation({
     mutationFn: (orgId: string) => organizationsApi.delete(orgId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.list() });
     },
   });
 }
@@ -78,7 +71,7 @@ export function useDeleteOrganization() {
 
 export function useOrganizationMembers(orgId: string) {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.members(orgId),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.members(orgId),
     queryFn: () => organizationsApi.listMembers(orgId),
     enabled: !!orgId,
     staleTime: 2 * 60 * 1000,
@@ -91,7 +84,7 @@ export function useInviteMember(orgId: string) {
   return useMutation({
     mutationFn: (data: InviteMemberRequest) => organizationsApi.inviteMember(orgId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.members(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.members(orgId) });
     },
   });
 }
@@ -103,7 +96,7 @@ export function useUpdateMemberRole(orgId: string) {
     mutationFn: ({ userId, data }: { userId: string; data: UpdateMemberRoleRequest }) =>
       organizationsApi.updateMemberRole(orgId, userId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.members(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.members(orgId) });
     },
   });
 }
@@ -114,7 +107,7 @@ export function useRemoveMember(orgId: string) {
   return useMutation({
     mutationFn: (userId: string) => organizationsApi.removeMember(orgId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.members(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.members(orgId) });
     },
   });
 }
@@ -125,7 +118,7 @@ export function useLeaveOrganization() {
   return useMutation({
     mutationFn: (orgId: string) => organizationsApi.leave(orgId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.list() });
     },
   });
 }
@@ -134,7 +127,7 @@ export function useLeaveOrganization() {
 
 export function useOrganizationInvitations(orgId: string, includeExpired = false) {
   return useQuery({
-    queryKey: [...ORGANIZATION_KEYS.invitations(orgId), { includeExpired }],
+    queryKey: [...QUERY_KEYS.ORGANIZATIONS.invitations(orgId), { includeExpired }],
     queryFn: () => organizationsApi.listInvitations(orgId, includeExpired),
     enabled: !!orgId,
     staleTime: 60 * 1000, // 1 minute
@@ -143,7 +136,7 @@ export function useOrganizationInvitations(orgId: string, includeExpired = false
 
 export function useInvitationByToken(token: string) {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.invitation(token),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.invitation(token),
     queryFn: () => organizationsApi.getInvitationByToken(token),
     enabled: !!token,
     staleTime: 30 * 1000, // 30 seconds
@@ -157,7 +150,7 @@ export function useCreateInvitation(orgId: string) {
   return useMutation({
     mutationFn: (data: CreateInvitationRequest) => organizationsApi.createInvitation(orgId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.invitations(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.invitations(orgId) });
     },
   });
 }
@@ -168,7 +161,7 @@ export function useRevokeInvitation(orgId: string) {
   return useMutation({
     mutationFn: (invitationId: string) => organizationsApi.revokeInvitation(orgId, invitationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.invitations(orgId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.invitations(orgId) });
     },
   });
 }
@@ -180,7 +173,7 @@ export function useAcceptInvitation() {
     mutationFn: (token: string) => organizationsApi.acceptInvitation(token),
     onSuccess: () => {
       // Invalidate organizations list to show the new org
-      queryClient.invalidateQueries({ queryKey: ORGANIZATION_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORGANIZATIONS.list() });
     },
   });
 }
@@ -189,7 +182,7 @@ export function useAcceptInvitation() {
 
 export function useSubscriptionTiers() {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.tiers,
+    queryKey: QUERY_KEYS.ORGANIZATIONS.tiers,
     queryFn: organizationsApi.listTiers,
     staleTime: 10 * 60 * 1000, // 10 minutes (tiers rarely change)
   });
@@ -197,7 +190,7 @@ export function useSubscriptionTiers() {
 
 export function useOrganizationSubscription(orgId: string) {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.subscription(orgId),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.subscription(orgId),
     queryFn: () => organizationsApi.getSubscription(orgId),
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
@@ -206,7 +199,7 @@ export function useOrganizationSubscription(orgId: string) {
 
 export function useSubscriptionUsage(orgId: string) {
   return useQuery({
-    queryKey: ORGANIZATION_KEYS.usage(orgId),
+    queryKey: QUERY_KEYS.ORGANIZATIONS.usage(orgId),
     queryFn: () => organizationsApi.getUsage(orgId),
     enabled: !!orgId,
     staleTime: 60 * 1000, // 1 minute (usage changes frequently)

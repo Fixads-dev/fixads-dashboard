@@ -2,6 +2,16 @@
 
 import { Bell, Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +50,7 @@ interface AlertRulesListProps {
 
 export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesListProps) {
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
   const updateRule = useUpdateAlertRule();
   const deleteRule = useDeleteAlertRule();
 
@@ -50,10 +61,13 @@ export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesLi
     });
   };
 
-  const handleDelete = (ruleId: string) => {
-    if (confirm("Are you sure you want to delete this alert rule?")) {
-      deleteRule.mutate(ruleId);
-    }
+  const handleDelete = () => {
+    if (!deletingRuleId) return;
+    deleteRule.mutate(deletingRuleId, {
+      onSuccess: () => {
+        setDeletingRuleId(null);
+      },
+    });
   };
 
   if (isLoading) {
@@ -139,6 +153,7 @@ export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesLi
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
                           <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">More options</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -147,7 +162,7 @@ export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesLi
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDelete(rule.id)}
+                          onClick={() => setDeletingRuleId(rule.id)}
                           className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -170,6 +185,33 @@ export function AlertRulesList({ rules, isLoading, onCreateClick }: AlertRulesLi
         mode="edit"
         rule={editingRule ?? undefined}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deletingRuleId}
+        onOpenChange={(open) => !open && setDeletingRuleId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Alert Rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this alert rule? You will no longer
+              receive notifications for this condition. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRule.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteRule.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRule.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

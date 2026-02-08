@@ -17,6 +17,16 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +85,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function WebhookManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<WebhookType | null>(null);
+  const [deletingWebhookId, setDeletingWebhookId] = useState<string | null>(null);
 
   const { data: webhooksData, isLoading } = useWebhooks();
   const createWebhook = useCreateWebhook();
@@ -154,11 +165,12 @@ export function WebhookManager() {
     }
   };
 
-  const handleDelete = async (webhookId: string) => {
-    if (!confirm("Are you sure you want to delete this webhook?")) return;
+  const handleDelete = async () => {
+    if (!deletingWebhookId) return;
     try {
-      await deleteWebhook.mutateAsync(webhookId);
+      await deleteWebhook.mutateAsync(deletingWebhookId);
       toast.success("Webhook deleted");
+      setDeletingWebhookId(null);
     } catch {
       toast.error("Failed to delete webhook");
     }
@@ -277,6 +289,7 @@ export function WebhookManager() {
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -289,7 +302,7 @@ export function WebhookManager() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDelete(webhook.id)}
+                            onClick={() => setDeletingWebhookId(webhook.id)}
                             className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -389,6 +402,31 @@ export function WebhookManager() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deletingWebhookId}
+        onOpenChange={(open) => !open && setDeletingWebhookId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Webhook</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this webhook? It will no longer
+              receive alert notifications. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteWebhook.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteWebhook.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteWebhook.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

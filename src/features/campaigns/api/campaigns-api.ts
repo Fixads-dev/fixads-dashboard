@@ -20,6 +20,16 @@ import type {
 
 const GOOGLE_ADS_PATH = "google-ads/v1";
 
+/**
+ * Validate that a campaign ID contains only digits.
+ * Prevents GAQL injection when interpolating into query strings.
+ */
+export function validateCampaignId(campaignId: string): void {
+  if (!/^\d+$/.test(campaignId)) {
+    throw new Error("Invalid campaign ID");
+  }
+}
+
 export const campaignsApi = {
   /**
    * Get all PMax campaigns for an account
@@ -57,6 +67,7 @@ export const campaignsApi = {
    * @throws Error if campaign not found or API fails
    */
   getCampaign: async (accountId: string, campaignId: string): Promise<Campaign> => {
+    validateCampaignId(campaignId);
     // GAQL requires date filter for metrics - use LAST_30_DAYS
     const query = `
       SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type,
@@ -225,6 +236,7 @@ export const campaignsApi = {
     campaignId: string,
     days: number = 30,
   ): Promise<DailyMetrics[]> => {
+    validateCampaignId(campaignId);
     // GAQL only supports specific LAST_X_DAYS values
     const validDuringValues = [7, 14, 30, 90];
     let dateFilter: string;

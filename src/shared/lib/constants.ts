@@ -179,6 +179,19 @@ export const QUERY_KEYS = {
     parentId?: string,
   ) => ["geographic-performance", accountId, campaignId, level, parentId ?? "root"] as const,
 
+  // ==================== Organizations ====================
+  ORGANIZATIONS: {
+    all: ["organizations"] as const,
+    list: () => ["organizations", "list"] as const,
+    detail: (id: string) => ["organizations", id] as const,
+    members: (id: string) => ["organizations", id, "members"] as const,
+    invitations: (id: string) => ["organizations", id, "invitations"] as const,
+    invitation: (token: string) => ["invitation", token] as const,
+    subscription: (id: string) => ["organizations", id, "subscription"] as const,
+    usage: (id: string) => ["organizations", id, "usage"] as const,
+    tiers: ["subscription-tiers"] as const,
+  },
+
   // ==================== Alerts ====================
   ALERTS: {
     all: ["alerts"] as const,

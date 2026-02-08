@@ -12,6 +12,16 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +74,7 @@ const SCOPE_COLORS: Record<CredentialScope, string> = {
 };
 
 function CredentialCard({ credential }: { credential: Credential }) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { mutate: validate, isPending: isValidating } = useValidateCredential();
   const { mutate: deleteCredential, isPending: isDeleting } = useDeleteCredential();
 
@@ -88,19 +99,19 @@ function CredentialCard({ credential }: { credential: Credential }) {
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this credential?")) {
-      deleteCredential(credential.id, {
-        onSuccess: () => {
-          toast.success("Credential deleted");
-        },
-        onError: (error) => {
-          toast.error(error.message || "Failed to delete credential");
-        },
-      });
-    }
+    deleteCredential(credential.id, {
+      onSuccess: () => {
+        toast.success("Credential deleted");
+        setShowDeleteDialog(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete credential");
+      },
+    });
   };
 
   return (
+    <>
     <div className="flex items-center justify-between rounded-lg border p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -162,6 +173,7 @@ function CredentialCard({ credential }: { credential: Credential }) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canEdit}>
               <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">More options</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -170,17 +182,41 @@ function CredentialCard({ credential }: { credential: Credential }) {
               {isValidating ? "Validating..." : "Validate"}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={handleDelete}
-              disabled={isDeleting || !canEdit}
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={!canEdit}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              {isDeleting ? "Deleting..." : "Delete"}
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Credential</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{credential.name}</strong>?
+              This action cannot be undone and may affect services using this
+              credential.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

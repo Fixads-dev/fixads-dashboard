@@ -217,6 +217,7 @@ export function RunDetailContent() {
         <div className="flex items-start gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Go back</span>
           </Button>
           <div>
             <div className="flex items-center gap-3">
