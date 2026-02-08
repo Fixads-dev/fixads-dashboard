@@ -22,6 +22,7 @@ import {
   useSignals,
 } from "@/features/campaigns";
 import type { AssetGroup, AssetGroupSignal, AssetGroupWithAssets, TextAsset } from "@/features/campaigns/types";
+import { toast } from "sonner";
 import { performanceColors, statusColors } from "../constants";
 
 interface AssetsTabProps {
@@ -71,12 +72,15 @@ function SignalsSection({
           setNewSearchTheme("");
           setIsAddDialogOpen(false);
         },
+        onError: () => toast.error("Failed to add search theme"),
       });
     }
   };
 
   const handleRemoveSignal = (signalId: string) => {
-    removeSignal.mutate(signalId);
+    removeSignal.mutate(signalId, {
+      onError: () => toast.error("Failed to remove signal"),
+    });
   };
 
   return (
@@ -158,6 +162,7 @@ function SignalsSection({
                 onClick={() => handleRemoveSignal(signal.signal_id)}
                 className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
                 disabled={removeSignal.isPending}
+                aria-label="Remove signal"
               >
                 <Trash2 className="h-3 w-3 text-destructive" />
               </button>

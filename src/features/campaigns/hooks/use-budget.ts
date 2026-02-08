@@ -1,28 +1,19 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import { budgetApi } from "../api/budget-api";
 import type { UpdateBudgetRequest } from "../types";
 
-// Budget-specific query keys
-const BUDGET_KEYS = {
-  all: ["budget"] as const,
-  campaign: (accountId: string, campaignId: string) =>
-    ["budget", "campaign", accountId, campaignId] as const,
-  spend: (accountId: string, campaignId: string, dateRange: string) =>
-    ["budget", "spend", accountId, campaignId, dateRange] as const,
-  history: (accountId: string, campaignId: string) =>
-    ["budget", "history", accountId, campaignId] as const,
-  accountOverview: (accountId: string) =>
-    ["budget", "overview", accountId] as const,
-};
+/** @deprecated Use QUERY_KEYS.BUDGET from shared/lib/constants instead */
+export const BUDGET_KEYS = QUERY_KEYS.BUDGET;
 
 /**
  * Hook to get campaign budget details
  */
 export function useCampaignBudget(accountId: string, campaignId: string) {
   return useQuery({
-    queryKey: BUDGET_KEYS.campaign(accountId, campaignId),
+    queryKey: QUERY_KEYS.BUDGET.campaign(accountId, campaignId),
     queryFn: () => budgetApi.getCampaignBudget(accountId, campaignId),
     enabled: !!accountId && !!campaignId,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -38,7 +29,7 @@ export function useBudgetSpend(
   dateRange: string = "LAST_30_DAYS",
 ) {
   return useQuery({
-    queryKey: BUDGET_KEYS.spend(accountId, campaignId, dateRange),
+    queryKey: QUERY_KEYS.BUDGET.spend(accountId, campaignId, dateRange),
     queryFn: () => budgetApi.getBudgetSpend(accountId, campaignId, dateRange),
     enabled: !!accountId && !!campaignId,
     staleTime: 5 * 60 * 1000,
@@ -50,7 +41,7 @@ export function useBudgetSpend(
  */
 export function useBudgetHistory(accountId: string, campaignId: string) {
   return useQuery({
-    queryKey: BUDGET_KEYS.history(accountId, campaignId),
+    queryKey: QUERY_KEYS.BUDGET.history(accountId, campaignId),
     queryFn: () => budgetApi.getBudgetHistory(accountId, campaignId),
     enabled: !!accountId && !!campaignId,
     staleTime: 5 * 60 * 1000,
@@ -62,7 +53,7 @@ export function useBudgetHistory(accountId: string, campaignId: string) {
  */
 export function useAccountBudgetOverview(accountId: string) {
   return useQuery({
-    queryKey: BUDGET_KEYS.accountOverview(accountId),
+    queryKey: QUERY_KEYS.BUDGET.accountOverview(accountId),
     queryFn: () => budgetApi.getAccountBudgetOverview(accountId),
     enabled: !!accountId,
     staleTime: 5 * 60 * 1000,
@@ -80,9 +71,9 @@ export function useUpdateBudget(accountId: string, campaignId: string) {
       budgetApi.updateBudget(accountId, campaignId, request),
     onSuccess: () => {
       // Invalidate budget-related queries
-      queryClient.invalidateQueries({ queryKey: BUDGET_KEYS.campaign(accountId, campaignId) });
-      queryClient.invalidateQueries({ queryKey: BUDGET_KEYS.spend(accountId, campaignId, "LAST_30_DAYS") });
-      queryClient.invalidateQueries({ queryKey: BUDGET_KEYS.accountOverview(accountId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BUDGET.campaign(accountId, campaignId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BUDGET.spend(accountId, campaignId, "LAST_30_DAYS") });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BUDGET.accountOverview(accountId) });
     },
   });
 }

@@ -151,6 +151,7 @@ export function DashboardDetailContent({ dashboardId }: Props) {
           <Button variant="ghost" size="icon" asChild>
             <Link href="/dashboards">
               <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back to dashboards</span>
             </Link>
           </Button>
           <div>
@@ -244,6 +245,7 @@ export function DashboardDetailContent({ dashboardId }: Props) {
           </Dialog>
           <Button variant="outline" size="icon">
             <Settings className="h-4 w-4" />
+            <span className="sr-only">Dashboard settings</span>
           </Button>
         </div>
       </div>
@@ -300,6 +302,7 @@ function WidgetCard({ widget, onRemove }: WidgetCardProps) {
           onClick={onRemove}
         >
           <Trash2 className="h-4 w-4" />
+          <span className="sr-only">Remove widget</span>
         </Button>
       </CardHeader>
       <CardContent>

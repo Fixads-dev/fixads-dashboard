@@ -43,6 +43,7 @@ import {
   useCreateAlertRule,
   useUpdateAlertRule,
 } from "@/features/alerts";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -137,22 +138,27 @@ export function AlertRuleDialog({ open, onOpenChange, mode, rule }: AlertRuleDia
       webhook_url: values.webhook_url || undefined,
     };
 
-    if (mode === "create") {
-      await createRule.mutateAsync(payload);
-    } else if (rule) {
-      await updateRule.mutateAsync({
-        ruleId: rule.id,
-        data: {
-          name: payload.name,
-          threshold: payload.threshold,
-          notification_channels: payload.notification_channels,
-          cooldown_minutes: payload.cooldown_minutes,
-          email_recipients: payload.email_recipients,
-          webhook_url: payload.webhook_url,
-        },
-      });
+    try {
+      if (mode === "create") {
+        await createRule.mutateAsync(payload);
+      } else if (rule) {
+        await updateRule.mutateAsync({
+          ruleId: rule.id,
+          data: {
+            name: payload.name,
+            threshold: payload.threshold,
+            notification_channels: payload.notification_channels,
+            cooldown_minutes: payload.cooldown_minutes,
+            email_recipients: payload.email_recipients,
+            webhook_url: payload.webhook_url,
+          },
+        });
+      }
+      onOpenChange(false);
+      form.reset();
+    } catch {
+      toast.error("Failed to save alert rule");
     }
-    onOpenChange(false);
   };
 
   const isPending = createRule.isPending || updateRule.isPending;

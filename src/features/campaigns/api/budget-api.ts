@@ -7,6 +7,7 @@ import type {
   UpdateBudgetRequest,
   UpdateBudgetResponse,
 } from "../types";
+import { validateCampaignId } from "./campaigns-api";
 
 const GOOGLE_ADS_PATH = "google-ads/v1";
 
@@ -21,6 +22,7 @@ export const budgetApi = {
     accountId: string,
     campaignId: string,
   ): Promise<CampaignBudget> => {
+    validateCampaignId(campaignId);
     return apiMethods.get<CampaignBudget>(
       `${GOOGLE_ADS_PATH}/accounts/${accountId}/campaigns/${campaignId}/budget`,
     );
@@ -34,6 +36,7 @@ export const budgetApi = {
     campaignId: string,
     request: UpdateBudgetRequest,
   ): Promise<UpdateBudgetResponse> => {
+    validateCampaignId(campaignId);
     return apiMethods.put<UpdateBudgetResponse>(
       `${GOOGLE_ADS_PATH}/accounts/${accountId}/campaigns/${campaignId}/budget`,
       request,
@@ -48,6 +51,7 @@ export const budgetApi = {
     campaignId: string,
     dateRange: string = "LAST_30_DAYS",
   ): Promise<BudgetSpend> => {
+    validateCampaignId(campaignId);
     const params = new URLSearchParams({ date_range: dateRange });
     return apiMethods.get<BudgetSpend>(
       `${GOOGLE_ADS_PATH}/accounts/${accountId}/campaigns/${campaignId}/budget/spend?${params.toString()}`,
@@ -62,6 +66,7 @@ export const budgetApi = {
     campaignId: string,
     limit: number = 50,
   ): Promise<BudgetHistory> => {
+    validateCampaignId(campaignId);
     const params = new URLSearchParams({ limit: String(limit) });
     return apiMethods.get<BudgetHistory>(
       `${GOOGLE_ADS_PATH}/accounts/${accountId}/campaigns/${campaignId}/budget/history?${params.toString()}`,

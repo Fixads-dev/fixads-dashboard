@@ -21,6 +21,7 @@ import {
   useMarkAllAlertsRead,
 } from "@/features/alerts";
 import { ROUTES } from "@/shared/lib/constants";
+import { toast } from "sonner";
 
 const statusConfig = {
   PENDING: { icon: Clock, color: "text-yellow-500" },
@@ -62,7 +63,11 @@ export function AlertBell() {
               variant="ghost"
               size="sm"
               className="h-auto px-2 py-1 text-xs"
-              onClick={() => markAllRead.mutate()}
+              onClick={() =>
+                markAllRead.mutate(undefined, {
+                  onError: () => toast.error("Failed to mark alerts as read"),
+                })
+              }
               disabled={markAllRead.isPending}
             >
               Mark all read
@@ -88,7 +93,9 @@ export function AlertBell() {
                   onSelect={(e) => {
                     if (isUnread) {
                       e.preventDefault();
-                      acknowledgeAlert.mutate(alert.id);
+                      acknowledgeAlert.mutate(alert.id, {
+                        onError: () => toast.error("Failed to acknowledge alert"),
+                      });
                     }
                   }}
                 >

@@ -15,6 +15,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import { useBulkAddKeywords, useSearchTerms } from "../hooks/use-search-terms";
 import type { KeywordMatchType, SearchTerm, SearchTermsFilters } from "../types";
 import { MATCH_TYPE_LABELS } from "../types";
+import { toast } from "sonner";
 import { SearchTermsFilters as SearchTermsFiltersComponent } from "./search-terms-filters";
 import { SearchTermsTableHeader } from "./search-terms-table-header";
 import { SearchTermsTableRow } from "./search-terms-table-row";
@@ -116,6 +117,7 @@ export function SearchTermsTable({ filters }: SearchTermsTableProps) {
         onSuccess: () => {
           setSelectedTerms(new Set());
         },
+        onError: () => toast.error("Failed to add keywords"),
       },
     );
   };

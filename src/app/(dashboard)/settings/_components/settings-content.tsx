@@ -80,6 +80,7 @@ export function SettingsContent() {
                   onClick={() => setTheme("light")}
                 >
                   <Sun className="h-4 w-4" />
+                  <span className="sr-only">Light theme</span>
                 </Button>
                 <Button
                   variant={theme === "dark" ? "default" : "outline"}
@@ -87,6 +88,7 @@ export function SettingsContent() {
                   onClick={() => setTheme("dark")}
                 >
                   <Moon className="h-4 w-4" />
+                  <span className="sr-only">Dark theme</span>
                 </Button>
               </div>
             </div>

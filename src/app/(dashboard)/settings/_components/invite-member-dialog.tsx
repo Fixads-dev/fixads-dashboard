@@ -128,6 +128,7 @@ export function InviteMemberDialog({ orgId, orgName, trigger }: InviteMemberDial
                   <Input value={inviteLink} readOnly className="font-mono text-sm" />
                   <Button variant="outline" size="icon" onClick={handleCopyLink}>
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    <span className="sr-only">Copy invite link</span>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">This link expires in 7 days</p>

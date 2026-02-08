@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/shared/lib/constants";
 import {
   alertHistoryApi,
   alertRulesApi,
@@ -15,17 +16,8 @@ import type {
   WebhookUpdate,
 } from "../types";
 
-// Query keys
-const ALERT_KEYS = {
-  all: ["alerts"] as const,
-  rules: () => [...ALERT_KEYS.all, "rules"] as const,
-  rule: (id: string) => [...ALERT_KEYS.rules(), id] as const,
-  history: () => [...ALERT_KEYS.all, "history"] as const,
-  unreadCount: () => [...ALERT_KEYS.all, "unread"] as const,
-  preferences: () => ["notifications", "preferences"] as const,
-  webhooks: () => ["webhooks"] as const,
-  webhook: (id: string) => [...ALERT_KEYS.webhooks(), id] as const,
-};
+/** @deprecated Use QUERY_KEYS.ALERTS from shared/lib/constants instead */
+export const ALERT_KEYS = QUERY_KEYS.ALERTS;
 
 // ==================== Alert Rules Hooks ====================
 
@@ -36,7 +28,7 @@ export function useAlertRules(params?: {
   offset?: number;
 }) {
   return useQuery({
-    queryKey: [...ALERT_KEYS.rules(), params],
+    queryKey: QUERY_KEYS.ALERTS.rules.list(params),
     queryFn: () => alertRulesApi.list(params),
     staleTime: 30 * 1000, // 30 seconds
   });
@@ -44,7 +36,7 @@ export function useAlertRules(params?: {
 
 export function useAlertRule(ruleId: string) {
   return useQuery({
-    queryKey: ALERT_KEYS.rule(ruleId),
+    queryKey: QUERY_KEYS.ALERTS.rules.detail(ruleId),
     queryFn: () => alertRulesApi.get(ruleId),
     enabled: !!ruleId,
   });
@@ -56,7 +48,7 @@ export function useCreateAlertRule() {
   return useMutation({
     mutationFn: (data: AlertRuleCreate) => alertRulesApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.rules() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.rules.all });
     },
   });
 }
@@ -68,8 +60,8 @@ export function useUpdateAlertRule() {
     mutationFn: ({ ruleId, data }: { ruleId: string; data: AlertRuleUpdate }) =>
       alertRulesApi.update(ruleId, data),
     onSuccess: (_, { ruleId }) => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.rules() });
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.rule(ruleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.rules.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.rules.detail(ruleId) });
     },
   });
 }
@@ -80,7 +72,7 @@ export function useDeleteAlertRule() {
   return useMutation({
     mutationFn: (ruleId: string) => alertRulesApi.delete(ruleId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.rules() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.rules.all });
     },
   });
 }
@@ -89,7 +81,7 @@ export function useDeleteAlertRule() {
 
 export function useAlertHistory(params?: { limit?: number; offset?: number }) {
   return useQuery({
-    queryKey: [...ALERT_KEYS.history(), params],
+    queryKey: QUERY_KEYS.ALERTS.history.list(params),
     queryFn: () => alertHistoryApi.list(params),
     staleTime: 30 * 1000,
   });
@@ -97,7 +89,7 @@ export function useAlertHistory(params?: { limit?: number; offset?: number }) {
 
 export function useAlertUnreadCount() {
   return useQuery({
-    queryKey: ALERT_KEYS.unreadCount(),
+    queryKey: QUERY_KEYS.ALERTS.history.unread,
     queryFn: () => alertHistoryApi.getUnreadCount(),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000, // Refetch every minute
@@ -110,8 +102,8 @@ export function useAcknowledgeAlert() {
   return useMutation({
     mutationFn: (alertId: string) => alertHistoryApi.acknowledge(alertId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.history() });
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.unread });
     },
   });
 }
@@ -122,8 +114,8 @@ export function useDismissAlert() {
   return useMutation({
     mutationFn: (alertId: string) => alertHistoryApi.dismiss(alertId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.history() });
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.unread });
     },
   });
 }
@@ -134,8 +126,8 @@ export function useMarkAllAlertsRead() {
   return useMutation({
     mutationFn: () => alertHistoryApi.markAllRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.history() });
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.history.unread });
     },
   });
 }
@@ -144,7 +136,7 @@ export function useMarkAllAlertsRead() {
 
 export function useNotificationPreferences() {
   return useQuery({
-    queryKey: ALERT_KEYS.preferences(),
+    queryKey: QUERY_KEYS.ALERTS.notifications.preferences,
     queryFn: () => notificationPreferencesApi.get(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -156,7 +148,7 @@ export function useUpdateNotificationPreferences() {
   return useMutation({
     mutationFn: (data: NotificationPreferencesUpdate) => notificationPreferencesApi.update(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.preferences() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.notifications.preferences });
     },
   });
 }
@@ -165,7 +157,7 @@ export function useUpdateNotificationPreferences() {
 
 export function useWebhooks() {
   return useQuery({
-    queryKey: ALERT_KEYS.webhooks(),
+    queryKey: QUERY_KEYS.ALERTS.webhooks.list,
     queryFn: () => webhooksApi.list(),
     staleTime: 60 * 1000, // 1 minute
   });
@@ -177,7 +169,7 @@ export function useCreateWebhook() {
   return useMutation({
     mutationFn: (data: WebhookCreate) => webhooksApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.webhooks() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.webhooks.all });
     },
   });
 }
@@ -189,7 +181,7 @@ export function useUpdateWebhook() {
     mutationFn: ({ webhookId, data }: { webhookId: string; data: WebhookUpdate }) =>
       webhooksApi.update(webhookId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.webhooks() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.webhooks.all });
     },
   });
 }
@@ -200,7 +192,7 @@ export function useDeleteWebhook() {
   return useMutation({
     mutationFn: (webhookId: string) => webhooksApi.delete(webhookId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALERT_KEYS.webhooks() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ALERTS.webhooks.all });
     },
   });
 }

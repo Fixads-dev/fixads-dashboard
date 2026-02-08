@@ -15,6 +15,7 @@ import {
   useDismissAlert,
   useMarkAllAlertsRead,
 } from "@/features/alerts";
+import { toast } from "sonner";
 
 interface AlertHistoryListProps {
   alerts: AlertHistoryItem[];
@@ -82,7 +83,11 @@ export function AlertHistoryList({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => markAllRead.mutate()}
+            onClick={() =>
+              markAllRead.mutate(undefined, {
+                onError: () => toast.error("Failed to mark alerts as read"),
+              })
+            }
             disabled={markAllRead.isPending}
           >
             Mark all as read
@@ -126,7 +131,11 @@ export function AlertHistoryList({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => acknowledgeAlert.mutate(alert.id)}
+                          onClick={() =>
+                            acknowledgeAlert.mutate(alert.id, {
+                              onError: () => toast.error("Failed to acknowledge alert"),
+                            })
+                          }
                           disabled={acknowledgeAlert.isPending}
                         >
                           <CheckCircle className="mr-1 h-4 w-4" />
@@ -135,7 +144,11 @@ export function AlertHistoryList({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => dismissAlert.mutate(alert.id)}
+                          onClick={() =>
+                            dismissAlert.mutate(alert.id, {
+                              onError: () => toast.error("Failed to dismiss alert"),
+                            })
+                          }
                           disabled={dismissAlert.isPending}
                         >
                           <XCircle className="mr-1 h-4 w-4" />

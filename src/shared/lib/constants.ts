@@ -215,6 +215,28 @@ export const QUERY_KEYS = {
     },
   },
 
+  // ==================== Budget ====================
+  BUDGET: {
+    all: ["budget"] as const,
+    campaign: (accountId: string, campaignId: string) =>
+      ["budget", "campaign", accountId, campaignId] as const,
+    spend: (accountId: string, campaignId: string, dateRange: string) =>
+      ["budget", "spend", accountId, campaignId, dateRange] as const,
+    history: (accountId: string, campaignId: string) =>
+      ["budget", "history", accountId, campaignId] as const,
+    accountOverview: (accountId: string) =>
+      ["budget", "overview", accountId] as const,
+  },
+
+  // ==================== Credentials ====================
+  CREDENTIALS: {
+    all: ["credentials"] as const,
+    list: () => ["credentials", "list"] as const,
+    detail: (id: string) => ["credentials", id] as const,
+    audit: (id: string) => ["credentials", id, "audit"] as const,
+    resolved: () => ["credentials", "resolved"] as const,
+  },
+
   // ==================== Reports ====================
   REPORTS: {
     all: ["reports"] as const,

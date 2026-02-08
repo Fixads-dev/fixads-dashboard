@@ -46,6 +46,7 @@ import {
 } from "@/features/campaigns/hooks";
 import type { BudgetDeliveryMethod, BudgetPacingStatus } from "@/features/campaigns/types";
 import { formatCurrency } from "@/shared/lib/format";
+import { toast } from "sonner";
 
 interface BudgetTabProps {
   accountId: string;
@@ -130,6 +131,7 @@ export function BudgetTab({ accountId, campaignId, campaignName }: BudgetTabProp
             refetchBudget();
             refetchSpend();
           },
+          onError: () => toast.error("Failed to update budget"),
         },
       );
     }
